@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RefreshCw, AlertCircle } from 'lucide-react-native';
+import { RefreshCw, CircleAlert as AlertCircle } from 'lucide-react-native';
 
 export default function IndexScreen() {
   const { session, loading, connectionError, retryConnection } = useAuth();
