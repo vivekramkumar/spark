@@ -325,13 +325,14 @@ export default function DiscoverScreen() {
                   ref={scrollViewRef}
                   style={styles.profileScroll} 
                   showsVerticalScrollIndicator={false}
-                  bounces={false}
+                  bounces={true}
                   scrollEventThrottle={16}
                   onScrollBeginDrag={handleScrollBegin}
                   onScrollEndDrag={handleScrollEnd}
                   onMomentumScrollBegin={handleScrollBegin}
                   onMomentumScrollEnd={handleScrollEnd}
                   contentContainerStyle={styles.scrollContent}
+                  nestedScrollEnabled={true}
                 >
                   {/* Main Image Section */}
                   <View style={styles.imageContainer}>
@@ -582,6 +583,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: 20,
   },
   imageContainer: {
     position: 'relative',

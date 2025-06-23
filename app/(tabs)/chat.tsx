@@ -473,7 +473,11 @@ export default function ChatScreen() {
               <Text style={styles.headerSubtitle}>Your matches and conversations</Text>
             </View>
 
-            <ScrollView style={styles.matchesList} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.matchesList} 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.matchesListContent}
+            >
               {SAMPLE_MATCHES.map((match) => (
                 <TouchableOpacity
                   key={match.id}
@@ -577,12 +581,10 @@ export default function ChatScreen() {
               <ScrollView
                 ref={scrollViewRef}
                 style={styles.messagesContainer}
-                contentContainerStyle={[
-                  styles.messagesContent,
-                  { paddingBottom: keyboardHeight > 0 ? 20 : screenHeight * 0.02 }
-                ]}
-                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd()}
+                contentContainerStyle={styles.messagesContent}
+                onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
                 {messages.map((message) => (
                   <View
@@ -716,7 +718,11 @@ export default function ChatScreen() {
                         <Text style={styles.gameSelectorClose}>✕</Text>
                       </TouchableOpacity>
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <ScrollView 
+                      horizontal 
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.gamesScrollContent}
+                    >
                       <View style={styles.gamesRow}>
                         {AVAILABLE_GAMES.map((game) => (
                           <TouchableOpacity
@@ -739,10 +745,7 @@ export default function ChatScreen() {
                 </View>
               )}
 
-              <View style={[
-                styles.inputContainer,
-                { marginBottom: keyboardHeight > 0 ? 0 : Math.max(screenHeight * 0.015, 12) }
-              ]}>
+              <View style={styles.inputContainer}>
                 <LinearGradient
                   colors={['rgba(31, 31, 58, 0.95)', 'rgba(45, 27, 105, 0.95)']}
                   style={styles.inputGradient}
@@ -761,7 +764,7 @@ export default function ChatScreen() {
                       multiline
                       onFocus={() => {
                         setTimeout(() => {
-                          scrollViewRef.current?.scrollToEnd();
+                          scrollViewRef.current?.scrollToEnd({ animated: true });
                         }, 100);
                       }}
                     />
@@ -847,7 +850,10 @@ const styles = StyleSheet.create({
   },
   matchesList: {
     flex: 1,
+  },
+  matchesListContent: {
     paddingTop: 10,
+    paddingBottom: 20,
   },
   matchItem: {
     marginHorizontal: screenWidth * 0.05,
@@ -1250,6 +1256,9 @@ const styles = StyleSheet.create({
     fontSize: Math.min(screenWidth * 0.045, 18),
     color: '#9CA3AF',
   },
+  gamesScrollContent: {
+    paddingHorizontal: 4,
+  },
   gamesRow: {
     flexDirection: 'row',
     gap: screenWidth * 0.03,
@@ -1257,13 +1266,15 @@ const styles = StyleSheet.create({
   gameOption: {
     borderRadius: 12,
     overflow: 'hidden',
-    minWidth: screenWidth * 0.3,
+    width: screenWidth * 0.3,
   },
   gameOptionGradient: {
     padding: screenWidth * 0.03,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
+    minHeight: 80,
+    justifyContent: 'center',
   },
   gameOptionText: {
     fontSize: Math.min(screenWidth * 0.03, 12),
@@ -1275,6 +1286,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     paddingHorizontal: screenWidth * 0.04,
     paddingVertical: screenHeight * 0.015,
+    paddingBottom: Math.max(screenHeight * 0.015, 12),
   },
   inputGradient: {
     borderRadius: 25,
