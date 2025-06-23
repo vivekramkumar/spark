@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { View, ActivityIndicator, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RefreshCw, AlertCircle, CheckCircle, XCircle, ExternalLink, Copy } from 'lucide-react-native';
+import { RefreshCw, CircleAlert as AlertCircle, CircleCheck as CheckCircle, Circle as XCircle, ExternalLink, Copy } from 'lucide-react-native';
 import { checkEnvironmentSetup } from '@/lib/supabase';
 
 export default function IndexScreen() {
