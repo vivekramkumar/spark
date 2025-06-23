@@ -150,6 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
       }
       
+      // First, sign up the user
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -157,8 +158,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) return { error };
 
-      if (data.user) {
-        // Create profile
+      // Wait for the user to be properly authenticated
+      if (data.user && data.session) {
+        // Set the session immediately so RLS policies work
+        if (mounted.current) {
+          setSession(data.session);
+          setUser(data.user);
+        }
+
+        // Now create the profile with the authenticated session
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -178,6 +186,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('Error creating profile:', profileError);
           return { error: profileError };
         }
+
+        // Fetch the created profile
+        await fetchProfile(data.user.id);
       }
 
       return { error: null };
