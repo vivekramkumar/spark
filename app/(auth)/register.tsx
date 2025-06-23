@@ -72,12 +72,20 @@ export default function RegisterScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Registration Failed', error.message);
+      if (error.code === 'email_confirmation_required') {
+        Alert.alert(
+          'Check Your Email',
+          error.message,
+          [{ text: 'OK', onPress: () => router.push('/(auth)/login') }]
+        );
+      } else {
+        Alert.alert('Registration Failed', error.message);
+      }
     } else {
       Alert.alert(
         'Welcome to SparkMatch!',
         'Account created successfully! Your gaming love journey begins now.',
-        [{ text: 'Start Playing', onPress: () => router.replace('/(auth)/login') }]
+        [{ text: 'Start Playing', onPress: () => router.replace('/(tabs)') }]
       );
     }
   };

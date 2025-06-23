@@ -150,15 +150,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
       }
       
-      // First, sign up the user
+      // Sign up the user with email confirmation disabled for development
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          // Skip email confirmation in development
+          emailRedirectTo: undefined,
+        }
       });
 
-      if (error) return { error };
+      if (error) {
+        console.error('Signup error:', error);
+        return { error };
+      }
 
-      // Wait for the user to be properly authenticated
+      // Check if user needs email confirmation
+      if (data.user && !data.session) {
+        // User created but needs email confirmation
+        return { 
+          error: { 
+            message: 'Please check your email and click the confirmation link to complete registration.',
+            code: 'email_confirmation_required'
+          } 
+        };
+      }
+
+      // If we have both user and session, proceed with profile creation
       if (data.user && data.session) {
         // Set the session immediately so RLS policies work
         if (mounted.current) {
@@ -166,7 +184,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(data.user);
         }
 
-        // Now create the profile with the authenticated session
+        // Create the profile
         const { error: profileError } = await supabase
           .from('profiles')
           .insert({
@@ -193,6 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null };
     } catch (error) {
+      console.error('Signup catch error:', error);
       return { error };
     } finally {
       if (mounted.current) {
