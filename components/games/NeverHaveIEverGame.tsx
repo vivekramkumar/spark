@@ -176,20 +176,20 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
         >
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.completedContainer}>
-            <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
-            <Text style={styles.completedTitle}>Game Complete!</Text>
-            <Text style={styles.completedWinner}>{winner} Won!</Text>
-            <Text style={styles.completedScore}>
-              Lives Remaining: You {playerLives} - Luna {opponentLives}
-            </Text>
-            <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerLives > opponentLives ? 'player' : 'opponent')}>
-              <LinearGradient
-                colors={['#00F5FF', '#0080FF']}
-                style={styles.continueButtonGradient}
-              >
-                <Text style={styles.continueButtonText}>Continue to Chat</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
+              <Text style={styles.completedTitle}>Game Complete!</Text>
+              <Text style={styles.completedWinner}>{winner} Won!</Text>
+              <Text style={styles.completedScore}>
+                Lives Remaining: You {playerLives} - Luna {opponentLives}
+              </Text>
+              <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerLives > opponentLives ? 'player' : 'opponent')}>
+                <LinearGradient
+                  colors={['#00F5FF', '#0080FF']}
+                  style={styles.continueButtonGradient}
+                >
+                  <Text style={styles.continueButtonText}>Continue to Chat</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -199,125 +199,125 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
 
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-        style={styles.backgroundGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.gameTitle}>Never Have I Ever</Text>
-          <View style={styles.roundInfo}>
-            <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
-          </View>
-        </View>
-
-        <View style={styles.livesContainer}>
-          <View style={styles.playerLives}>
-            <Text style={styles.livesLabel}>You</Text>
-            <View style={styles.livesRow}>
-              {renderLives(playerLives)}
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
+          style={styles.backgroundGradient}
+        >
           <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView 
               style={styles.keyboardView}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               keyboardVerticalOffset={0}
             >
-            </View>
-          </View>
-          <View style={styles.playerLives}>
-            <Text style={styles.livesLabel}>Luna</Text>
-            <View style={styles.livesRow}>
-              {renderLives(opponentLives)}
-            </View>
-          </View>
-        </View>
-
-        <View style={styles.gameArea}>
-          {currentStatement && (
-            <Animated.View style={[styles.statementContainer, { opacity: fadeAnim }]}>
-              <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentStatement.category) }]}>
-                <Text style={styles.categoryText}>{currentStatement.category.toUpperCase()}</Text>
+              <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                  <Text style={styles.backButtonText}>← Back</Text>
+                </TouchableOpacity>
+                <Text style={styles.gameTitle}>Never Have I Ever</Text>
+                <View style={styles.roundInfo}>
+                  <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
+                </View>
               </View>
 
-              <ScrollView style={styles.statementScroll}>
-                <Text style={styles.statementText}>{currentStatement.text}</Text>
-              </ScrollView>
-
-              {gamePhase === 'statement' && !playerChoice && !isProcessingRound && (
-                <View style={styles.choiceButtons}>
-                  <TouchableOpacity
-                    style={styles.choiceButton}
-                    onPress={() => handlePlayerChoice('done')}
-                  >
-                    <LinearGradient
-                      colors={['#FF006E', '#F72585']}
-                      style={styles.choiceButtonGradient}
-                    >
-                      <ThumbsDown size={Math.min(screenWidth * 0.06, 24)} color="#FFFFFF" />
-                      <Text style={styles.choiceButtonText}>I HAVE</Text>
-                      <Text style={styles.choiceButtonSubtext}>Lose a life</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.choiceButton}
-                    onPress={() => handlePlayerChoice('never')}
-                  >
-                    <LinearGradient
-                      colors={['#06FFA5', '#00D4AA']}
-                      style={styles.choiceButtonGradient}
-                    >
-                      <ThumbsUp size={Math.min(screenWidth * 0.06, 24)} color="#FFFFFF" />
-                      <Text style={styles.choiceButtonText}>NEVER</Text>
-                      <Text style={styles.choiceButtonSubtext}>Stay safe</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-              {gamePhase === 'waiting' && (
-                <View style={styles.waitingContainer}>
-                  <Text style={styles.waitingTitle}>Waiting for Luna...</Text>
-                  {playerChoice && (
-                    <Text style={styles.yourChoice}>
-                      You chose: {playerChoice === 'done' ? 'I HAVE' : 'NEVER'}
-                    </Text>
-                  )}
-                </View>
-              )}
-
-              {playerChoice && opponentChoice && (
-                <View style={styles.resultsContainer}>
-                  <View style={styles.resultRow}>
-                    <Text style={styles.resultLabel}>You:</Text>
-                    <Text style={[
-                      styles.resultChoice,
-                      { color: playerChoice === 'done' ? '#FF006E' : '#06FFA5' }
-                    ]}>
-                      {playerChoice === 'done' ? 'I HAVE' : 'NEVER'}
-                    </Text>
-                  </View>
-                  <View style={styles.resultRow}>
-                    <Text style={styles.resultLabel}>Luna:</Text>
-                    <Text style={[
-                      styles.resultChoice,
-                      { color: opponentChoice === 'done' ? '#FF006E' : '#06FFA5' }
-                    ]}>
-                      {opponentChoice === 'done' ? 'I HAVE' : 'NEVER'}
-                    </Text>
+              <View style={styles.livesContainer}>
+                <View style={styles.playerLives}>
+                  <Text style={styles.livesLabel}>You</Text>
+                  <View style={styles.livesRow}>
+                    {renderLives(playerLives)}
                   </View>
                 </View>
-              )}
-            </Animated.View>
-          )}
-        </View>
+                <View style={styles.playerLives}>
+                  <Text style={styles.livesLabel}>Luna</Text>
+                  <View style={styles.livesRow}>
+                    {renderLives(opponentLives)}
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.gameArea}>
+                {currentStatement && (
+                  <Animated.View style={[styles.statementContainer, { opacity: fadeAnim }]}>
+                    <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentStatement.category) }]}>
+                      <Text style={styles.categoryText}>{currentStatement.category.toUpperCase()}</Text>
+                    </View>
+
+                    <ScrollView style={styles.statementScroll}>
+                      <Text style={styles.statementText}>{currentStatement.text}</Text>
+                    </ScrollView>
+
+                    {gamePhase === 'statement' && !playerChoice && !isProcessingRound && (
+                      <View style={styles.choiceButtons}>
+                        <TouchableOpacity
+                          style={styles.choiceButton}
+                          onPress={() => handlePlayerChoice('done')}
+                        >
+                          <LinearGradient
+                            colors={['#FF006E', '#F72585']}
+                            style={styles.choiceButtonGradient}
+                          >
+                            <ThumbsDown size={Math.min(screenWidth * 0.06, 24)} color="#FFFFFF" />
+                            <Text style={styles.choiceButtonText}>I HAVE</Text>
+                            <Text style={styles.choiceButtonSubtext}>Lose a life</Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.choiceButton}
+                          onPress={() => handlePlayerChoice('never')}
+                        >
+                          <LinearGradient
+                            colors={['#06FFA5', '#00D4AA']}
+                            style={styles.choiceButtonGradient}
+                          >
+                            <ThumbsUp size={Math.min(screenWidth * 0.06, 24)} color="#FFFFFF" />
+                            <Text style={styles.choiceButtonText}>NEVER</Text>
+                            <Text style={styles.choiceButtonSubtext}>Stay safe</Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+
+                    {gamePhase === 'waiting' && (
+                      <View style={styles.waitingContainer}>
+                        <Text style={styles.waitingTitle}>Waiting for Luna...</Text>
+                        {playerChoice && (
+                          <Text style={styles.yourChoice}>
+                            You chose: {playerChoice === 'done' ? 'I HAVE' : 'NEVER'}
+                          </Text>
+                        )}
+                      </View>
+                    )}
+
+                    {playerChoice && opponentChoice && (
+                      <View style={styles.resultsContainer}>
+                        <View style={styles.resultRow}>
+                          <Text style={styles.resultLabel}>You:</Text>
+                          <Text style={[
+                            styles.resultChoice,
+                            { color: playerChoice === 'done' ? '#FF006E' : '#06FFA5' }
+                          ]}>
+                            {playerChoice === 'done' ? 'I HAVE' : 'NEVER'}
+                          </Text>
+                        </View>
+                        <View style={styles.resultRow}>
+                          <Text style={styles.resultLabel}>Luna:</Text>
+                          <Text style={[
+                            styles.resultChoice,
+                            { color: opponentChoice === 'done' ? '#FF006E' : '#06FFA5' }
+                          ]}>
+                            {opponentChoice === 'done' ? 'I HAVE' : 'NEVER'}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </Animated.View>
+                )}
+              </View>
             </KeyboardAvoidingView>
           </SafeAreaView>
-      </LinearGradient>
-    </View>
+        </LinearGradient>
+      </View>
     </TouchableWithoutFeedback>
   );
 }
