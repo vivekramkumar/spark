@@ -221,23 +221,23 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
         >
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.completedContainer}>
-            <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
-            <Text style={styles.completedTitle}>Truth Session Complete!</Text>
-            <Text style={styles.completedWinner}>{winner} shared the most!</Text>
-            <Text style={styles.completedScore}>
-              Truths shared: You {playerScore} - Luna {opponentScore}
-            </Text>
-            <Text style={styles.completedSubtitle}>
-              Great conversation! You've learned so much about each other.
-            </Text>
-            <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerScore > opponentScore ? 'player' : 'opponent')}>
-              <LinearGradient
-                colors={['#00F5FF', '#0080FF']}
-                style={styles.continueButtonGradient}
-              >
-                <Text style={styles.continueButtonText}>Continue to Chat</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
+              <Text style={styles.completedTitle}>Truth Session Complete!</Text>
+              <Text style={styles.completedWinner}>{winner} shared the most!</Text>
+              <Text style={styles.completedScore}>
+                Truths shared: You {playerScore} - Luna {opponentScore}
+              </Text>
+              <Text style={styles.completedSubtitle}>
+                Great conversation! You've learned so much about each other.
+              </Text>
+              <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerScore > opponentScore ? 'player' : 'opponent')}>
+                <LinearGradient
+                  colors={['#00F5FF', '#0080FF']}
+                  style={styles.continueButtonGradient}
+                >
+                  <Text style={styles.continueButtonText}>Continue to Chat</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -247,169 +247,165 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
 
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-        style={styles.backgroundGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.gameTitle}>Truth Session</Text>
-          <View style={styles.roundInfo}>
-            <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
-          </View>
-        </View>
-
-        <View style={styles.scoreBoard}>
-          <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>You</Text>
-            <Text style={styles.scoreValue}>{playerScore}</Text>
-          </View>
-          <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Luna</Text>
-            <Text style={styles.scoreValue}>{opponentScore}</Text>
-          </View>
-        </View>
-
-        <View style={styles.currentPlayerIndicator}>
-          <Text style={styles.currentPlayerText}>
-            {currentPlayer === 'player' ? "Your Turn!" : "Luna's Turn"}
-          </Text>
-        </View>
-
-        <View style={styles.gameArea}>
-          {gamePhase === 'question' && currentPlayer === 'player' && currentQuestion && (
-            <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
-              <View style={styles.questionTypeIndicator}>
-                <Eye size={24} color="#FFFFFF" />
-                <Text style={styles.questionTypeText}>TRUTH</Text>
-              </View>
-
-              <View style={[styles.difficultyBadge, { 
-                backgroundColor: getDifficultyColor(currentQuestion.difficulty) 
-              }]}>
-                <Text style={styles.difficultyText}>
-                  {currentQuestion.difficulty.toUpperCase()}
-                </Text>
-              </View>
-
-              <ScrollView style={styles.questionScroll}>
-                <Text style={styles.questionText}>{currentQuestion.text}</Text>
-              </ScrollView>
-
-              <TouchableOpacity
-                style={styles.startAnswerButton}
-                onPress={handleStartAnswering}
-              >
-                <LinearGradient
-                  colors={['#9D4EDD', '#C77DFF']}
-                  style={styles.startAnswerButtonGradient}
-                >
-                  <Text style={styles.startAnswerButtonText}>Start Answering</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-
-          {gamePhase === 'answering' && currentPlayer === 'player' && (
-            <View style={styles.answeringContainer}>
-              <View style={styles.timerContainer}>
-                <Clock size={20} color="#FFD700" />
-                <Text style={styles.timerText}>{timeLeft}s</Text>
-              </View>
-
-              <Text style={styles.answeringTitle}>Your turn to share!</Text>
-              <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
-
-              <TextInput
-                style={styles.answerInput}
-                value={playerAnswer}
-                onChangeText={setPlayerAnswer}
-                placeholder="Type your honest answer here..."
-                placeholderTextColor="rgba(156, 163, 175, 0.7)"
-                multiline
-                maxLength={500}
-                autoFocus
-              />
-
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
+          style={styles.backgroundGradient}
+        >
           <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView 
               style={styles.keyboardView}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               keyboardVerticalOffset={0}
             >
-              <Text style={styles.characterCount}>{playerAnswer.length}/500</Text>
-
-              <View style={styles.answerActions}>
-                <TouchableOpacity
-                  style={styles.submitButton}
-                  onPress={handleSubmitAnswer}
-                  disabled={!playerAnswer.trim()}
-                >
-                  <LinearGradient
-                    colors={playerAnswer.trim() ? ['#06FFA5', '#00D4AA'] : ['#374151', '#4B5563']}
-                    style={styles.submitButtonGradient}
-                  >
-                    <Send size={20} color="#FFFFFF" />
-                    <Text style={styles.submitButtonText}>Submit Answer</Text>
-                  </LinearGradient>
+              <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                  <Text style={styles.backButtonText}>← Back</Text>
                 </TouchableOpacity>
-
-                <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-                  <Text style={styles.skipButtonText}>Skip Question</Text>
-                  onFocus={() => {
-                    // Don't auto-focus to prevent keyboard opening issues
-                  }}
-                  returnKeyType="done"
-                  onSubmitEditing={dismissKeyboard}
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-
-          {gamePhase === 'viewing' && (
-            <View style={styles.viewingContainer}>
-              <Text style={styles.viewingTitle}>
-                {currentPlayer === 'player' ? 'Your Answer:' : "Luna's Answer:"}
-              </Text>
-              
-              <View style={styles.answerDisplay}>
-                <LinearGradient
-                  colors={currentPlayer === 'player' 
-                    ? ['rgba(0, 245, 255, 0.1)', 'rgba(0, 128, 255, 0.05)']
-                    : ['rgba(157, 78, 221, 0.1)', 'rgba(199, 125, 255, 0.05)']
-                  }
-                  style={styles.answerDisplayGradient}
-                >
-                  <Text style={styles.answerText}>
-                    {currentPlayer === 'player' ? playerAnswer : opponentAnswer}
-                  </Text>
-                </LinearGradient>
+                <Text style={styles.gameTitle}>Truth Session</Text>
+                <View style={styles.roundInfo}>
+                  <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
+                </View>
               </View>
 
-              <Text style={styles.viewingSubtitle}>
-                {currentPlayer === 'player' 
-                  ? 'Luna can see your answer for a few seconds...'
-                  : 'Take a moment to read her answer...'
-                }
-              </Text>
-            </View>
-          )}
+              <View style={styles.scoreBoard}>
+                <View style={styles.scoreItem}>
+                  <Text style={styles.scoreLabel}>You</Text>
+                  <Text style={styles.scoreValue}>{playerScore}</Text>
+                </View>
+                <View style={styles.scoreItem}>
+                  <Text style={styles.scoreLabel}>Luna</Text>
+                  <Text style={styles.scoreValue}>{opponentScore}</Text>
+                </View>
+              </View>
 
-          {gamePhase === 'waiting' && currentPlayer === 'opponent' && (
-            <View style={styles.waitingContainer}>
-              <Text style={styles.waitingTitle}>Luna is thinking...</Text>
-              <Text style={styles.waitingSubtitle}>She's crafting her honest answer</Text>
-              <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
-            </View>
-          )}
-        </View>
+              <View style={styles.currentPlayerIndicator}>
+                <Text style={styles.currentPlayerText}>
+                  {currentPlayer === 'player' ? "Your Turn!" : "Luna's Turn"}
+                </Text>
+              </View>
+
+              <View style={styles.gameArea}>
+                {gamePhase === 'question' && currentPlayer === 'player' && currentQuestion && (
+                  <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
+                    <View style={styles.questionTypeIndicator}>
+                      <Eye size={24} color="#FFFFFF" />
+                      <Text style={styles.questionTypeText}>TRUTH</Text>
+                    </View>
+
+                    <View style={[styles.difficultyBadge, { 
+                      backgroundColor: getDifficultyColor(currentQuestion.difficulty) 
+                    }]}>
+                      <Text style={styles.difficultyText}>
+                        {currentQuestion.difficulty.toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <ScrollView style={styles.questionScroll}>
+                      <Text style={styles.questionText}>{currentQuestion.text}</Text>
+                    </ScrollView>
+
+                    <TouchableOpacity
+                      style={styles.startAnswerButton}
+                      onPress={handleStartAnswering}
+                    >
+                      <LinearGradient
+                        colors={['#9D4EDD', '#C77DFF']}
+                        style={styles.startAnswerButtonGradient}
+                      >
+                        <Text style={styles.startAnswerButtonText}>Start Answering</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </Animated.View>
+                )}
+
+                {gamePhase === 'answering' && currentPlayer === 'player' && (
+                  <View style={styles.answeringContainer}>
+                    <View style={styles.timerContainer}>
+                      <Clock size={20} color="#FFD700" />
+                      <Text style={styles.timerText}>{timeLeft}s</Text>
+                    </View>
+
+                    <Text style={styles.answeringTitle}>Your turn to share!</Text>
+                    <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
+
+                    <TextInput
+                      style={styles.answerInput}
+                      value={playerAnswer}
+                      onChangeText={setPlayerAnswer}
+                      placeholder="Type your honest answer here..."
+                      placeholderTextColor="rgba(156, 163, 175, 0.7)"
+                      multiline
+                      maxLength={500}
+                      returnKeyType="done"
+                      onSubmitEditing={dismissKeyboard}
+                    />
+
+                    <Text style={styles.characterCount}>{playerAnswer.length}/500</Text>
+
+                    <View style={styles.answerActions}>
+                      <TouchableOpacity
+                        style={styles.submitButton}
+                        onPress={handleSubmitAnswer}
+                        disabled={!playerAnswer.trim()}
+                      >
+                        <LinearGradient
+                          colors={playerAnswer.trim() ? ['#06FFA5', '#00D4AA'] : ['#374151', '#4B5563']}
+                          style={styles.submitButtonGradient}
+                        >
+                          <Send size={20} color="#FFFFFF" />
+                          <Text style={styles.submitButtonText}>Submit Answer</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+                        <Text style={styles.skipButtonText}>Skip Question</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {gamePhase === 'viewing' && (
+                  <View style={styles.viewingContainer}>
+                    <Text style={styles.viewingTitle}>
+                      {currentPlayer === 'player' ? 'Your Answer:' : "Luna's Answer:"}
+                    </Text>
+                    
+                    <View style={styles.answerDisplay}>
+                      <LinearGradient
+                        colors={currentPlayer === 'player' 
+                          ? ['rgba(0, 245, 255, 0.1)', 'rgba(0, 128, 255, 0.05)']
+                          : ['rgba(157, 78, 221, 0.1)', 'rgba(199, 125, 255, 0.05)']
+                        }
+                        style={styles.answerDisplayGradient}
+                      >
+                        <Text style={styles.answerText}>
+                          {currentPlayer === 'player' ? playerAnswer : opponentAnswer}
+                        </Text>
+                      </LinearGradient>
+                    </View>
+
+                    <Text style={styles.viewingSubtitle}>
+                      {currentPlayer === 'player' 
+                        ? 'Luna can see your answer for a few seconds...'
+                        : 'Take a moment to read her answer...'
+                      }
+                    </Text>
+                  </View>
+                )}
+
+                {gamePhase === 'waiting' && currentPlayer === 'opponent' && (
+                  <View style={styles.waitingContainer}>
+                    <Text style={styles.waitingTitle}>Luna is thinking...</Text>
+                    <Text style={styles.waitingSubtitle}>She's crafting her honest answer</Text>
+                    <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
+                  </View>
+                )}
+              </View>
             </KeyboardAvoidingView>
           </SafeAreaView>
-      </LinearGradient>
-    </View>
+        </LinearGradient>
+      </View>
     </TouchableWithoutFeedback>
   );
 }

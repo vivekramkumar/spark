@@ -167,23 +167,23 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
         >
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.completedContainer}>
-            <Heart size={Math.min(screenWidth * 0.16, 64)} color="#FF9F1C" />
-            <Text style={styles.completedTitle}>Stories Complete!</Text>
-            <Text style={styles.completedWinner}>{winner} Won!</Text>
-            <Text style={styles.completedScore}>
-              Final Score: {playerScore} - {opponentScore}
-            </Text>
-            <Text style={styles.completedSubtitle}>
-              Amazing creativity! Your stories revealed so much personality.
-            </Text>
-            <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerScore > opponentScore ? 'player' : 'opponent')}>
-              <LinearGradient
-                colors={['#00F5FF', '#0080FF']}
-                style={styles.continueButtonGradient}
-              >
-                <Text style={styles.continueButtonText}>Continue to Chat</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+              <Heart size={Math.min(screenWidth * 0.16, 64)} color="#FF9F1C" />
+              <Text style={styles.completedTitle}>Stories Complete!</Text>
+              <Text style={styles.completedWinner}>{winner} Won!</Text>
+              <Text style={styles.completedScore}>
+                Final Score: {playerScore} - {opponentScore}
+              </Text>
+              <Text style={styles.completedSubtitle}>
+                Amazing creativity! Your stories revealed so much personality.
+              </Text>
+              <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerScore > opponentScore ? 'player' : 'opponent')}>
+                <LinearGradient
+                  colors={['#00F5FF', '#0080FF']}
+                  style={styles.continueButtonGradient}
+                >
+                  <Text style={styles.continueButtonText}>Continue to Chat</Text>
+                </LinearGradient>
+              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </LinearGradient>
@@ -193,144 +193,144 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
 
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-        style={styles.backgroundGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.gameTitle}>Emoji Story</Text>
-          <View style={styles.roundInfo}>
-            <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
-          </View>
-        </View>
-
-        <View style={styles.scoreBoard}>
-          <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>You</Text>
-            <Text style={styles.scoreValue}>{playerScore}</Text>
-          </View>
-          <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Luna</Text>
-            <Text style={styles.scoreValue}>{opponentScore}</Text>
-          </View>
-        </View>
-
-        <View style={styles.timerContainer}>
-          <Clock size={Math.min(screenWidth * 0.05, 20)} color="#FF9F1C" />
-          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-        </View>
-
-        <View style={styles.gameArea}>
-          {gamePhase === 'writing' && (
-            <View style={styles.writingContainer}>
-              <View style={styles.promptContainer}>
-                <Text style={styles.promptTitle}>Story Prompt:</Text>
-                <Text style={styles.promptText}>{currentPrompt}</Text>
-              </View>
-
-              <View style={styles.emojiContainer}>
-                <Text style={styles.emojiTitle}>Use these emojis in your story:</Text>
-                <View style={styles.emojiRow}>
-                  {currentEmojis.map((emoji, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.emojiButton}
-                      onPress={() => addEmojiToStory(emoji)}
-                      disabled={isProcessingRound}
-                    >
-                      <Text style={styles.emojiText}>{emoji}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.storyInputContainer}>
-                <TextInput
-                  style={styles.storyInput}
-                  value={playerStory}
-                  onChangeText={setPlayerStory}
-                  placeholder="Write your emoji story here..."
-                  placeholderTextColor="rgba(156, 163, 175, 0.7)"
-                  multiline
-                  maxLength={500}
-                  editable={!isProcessingRound}
-                />
-                <Text style={styles.characterCount}>{playerStory.length}/500</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.submitButton}
-                onPress={handleSubmitStory}
-                disabled={!playerStory.trim() || isProcessingRound}
-              >
-                <LinearGradient
-                  colors={playerStory.trim() && !isProcessingRound ? ['#FF9F1C', '#FFBF69'] : ['#374151', '#4B5563']}
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
+          style={styles.backgroundGradient}
+        >
           <SafeAreaView style={styles.safeArea}>
             <KeyboardAvoidingView 
               style={styles.keyboardView}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               keyboardVerticalOffset={0}
             >
-                  style={styles.submitButtonGradient}
-                >
-                  <Send size={Math.min(screenWidth * 0.05, 20)} color="#FFFFFF" />
-                  <Text style={styles.submitButtonText}>Submit Story</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {gamePhase === 'waiting' && (
-            <View style={styles.waitingContainer}>
-              <Text style={styles.waitingTitle}>Luna is writing her story...</Text>
-              <Text style={styles.waitingSubtitle}>Using the same emojis and prompt</Text>
-              <View style={styles.yourStoryPreview}>
-                <Text style={styles.previewLabel}>Your story:</Text>
-                <ScrollView style={styles.previewScroll}>
-                  <Text style={styles.previewText}>{playerStory}</Text>
-                </ScrollView>
-              </View>
-            </View>
-          )}
-
-          {gamePhase === 'results' && (
-            <View style={styles.resultsContainer}>
-              <Text style={styles.resultsTitle}>Story Showdown!</Text>
-              
-              <View style={styles.storyComparison}>
-                <View style={styles.storyResult}>
-                  <Text style={styles.storyAuthor}>Your Story:</Text>
-                  <ScrollView style={styles.storyScroll}>
-                    <Text style={styles.storyText}>{playerStory}</Text>
-                  </ScrollView>
-                </View>
-
-                <View style={styles.storyResult}>
-                  <Text style={styles.storyAuthor}>Luna's Story:</Text>
-                  <ScrollView style={styles.storyScroll}>
-                    returnKeyType="done"
-                    onSubmitEditing={dismissKeyboard}
-                    <Text style={styles.storyText}>{opponentStory}</Text>
-                  </ScrollView>
+              <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                  <Text style={styles.backButtonText}>← Back</Text>
+                </TouchableOpacity>
+                <Text style={styles.gameTitle}>Emoji Story</Text>
+                <View style={styles.roundInfo}>
+                  <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
                 </View>
               </View>
 
-              <View style={styles.scoringInfo}>
-                <Text style={styles.scoringText}>
-                  Points awarded for creativity and emoji usage!
-                </Text>
+              <View style={styles.scoreBoard}>
+                <View style={styles.scoreItem}>
+                  <Text style={styles.scoreLabel}>You</Text>
+                  <Text style={styles.scoreValue}>{playerScore}</Text>
+                </View>
+                <View style={styles.scoreItem}>
+                  <Text style={styles.scoreLabel}>Luna</Text>
+                  <Text style={styles.scoreValue}>{opponentScore}</Text>
+                </View>
               </View>
-            </View>
-          )}
-        </View>
+
+              <View style={styles.timerContainer}>
+                <Clock size={Math.min(screenWidth * 0.05, 20)} color="#FF9F1C" />
+                <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+              </View>
+
+              <View style={styles.gameArea}>
+                {gamePhase === 'writing' && (
+                  <View style={styles.writingContainer}>
+                    <View style={styles.promptContainer}>
+                      <Text style={styles.promptTitle}>Story Prompt:</Text>
+                      <Text style={styles.promptText}>{currentPrompt}</Text>
+                    </View>
+
+                    <View style={styles.emojiContainer}>
+                      <Text style={styles.emojiTitle}>Use these emojis in your story:</Text>
+                      <View style={styles.emojiRow}>
+                        {currentEmojis.map((emoji, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.emojiButton}
+                            onPress={() => addEmojiToStory(emoji)}
+                            disabled={isProcessingRound}
+                          >
+                            <Text style={styles.emojiText}>{emoji}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <View style={styles.storyInputContainer}>
+                      <TextInput
+                        style={styles.storyInput}
+                        value={playerStory}
+                        onChangeText={setPlayerStory}
+                        placeholder="Write your emoji story here..."
+                        placeholderTextColor="rgba(156, 163, 175, 0.7)"
+                        multiline
+                        maxLength={500}
+                        editable={!isProcessingRound}
+                        returnKeyType="done"
+                        onSubmitEditing={dismissKeyboard}
+                      />
+                      <Text style={styles.characterCount}>{playerStory.length}/500</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={styles.submitButton}
+                      onPress={handleSubmitStory}
+                      disabled={!playerStory.trim() || isProcessingRound}
+                    >
+                      <LinearGradient
+                        colors={playerStory.trim() && !isProcessingRound ? ['#FF9F1C', '#FFBF69'] : ['#374151', '#4B5563']}
+                        style={styles.submitButtonGradient}
+                      >
+                        <Send size={Math.min(screenWidth * 0.05, 20)} color="#FFFFFF" />
+                        <Text style={styles.submitButtonText}>Submit Story</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {gamePhase === 'waiting' && (
+                  <View style={styles.waitingContainer}>
+                    <Text style={styles.waitingTitle}>Luna is writing her story...</Text>
+                    <Text style={styles.waitingSubtitle}>Using the same emojis and prompt</Text>
+                    <View style={styles.yourStoryPreview}>
+                      <Text style={styles.previewLabel}>Your story:</Text>
+                      <ScrollView style={styles.previewScroll}>
+                        <Text style={styles.previewText}>{playerStory}</Text>
+                      </ScrollView>
+                    </View>
+                  </View>
+                )}
+
+                {gamePhase === 'results' && (
+                  <View style={styles.resultsContainer}>
+                    <Text style={styles.resultsTitle}>Story Showdown!</Text>
+                    
+                    <View style={styles.storyComparison}>
+                      <View style={styles.storyResult}>
+                        <Text style={styles.storyAuthor}>Your Story:</Text>
+                        <ScrollView style={styles.storyScroll}>
+                          <Text style={styles.storyText}>{playerStory}</Text>
+                        </ScrollView>
+                      </View>
+
+                      <View style={styles.storyResult}>
+                        <Text style={styles.storyAuthor}>Luna's Story:</Text>
+                        <ScrollView style={styles.storyScroll}>
+                          <Text style={styles.storyText}>{opponentStory}</Text>
+                        </ScrollView>
+                      </View>
+                    </View>
+
+                    <View style={styles.scoringInfo}>
+                      <Text style={styles.scoringText}>
+                        Points awarded for creativity and emoji usage!
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </View>
             </KeyboardAvoidingView>
           </SafeAreaView>
-      </LinearGradient>
-    </View>
+        </LinearGradient>
+      </View>
     </TouchableWithoutFeedback>
   );
 }
