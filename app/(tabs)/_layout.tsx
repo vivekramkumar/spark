@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
-import { Heart, MessageCircle, User } from 'lucide-react-native';
+import { Heart, MessageCircle, User, Compass } from 'lucide-react-native';
 import { View, StyleSheet } from 'react-native';
+import { useTheme } from '@/contexts/ThemeContext';
 
 function TabBarIcon({ icon: Icon, focused, color }: { icon: any; focused: boolean; color: string }) {
   return (
@@ -12,20 +13,22 @@ function TabBarIcon({ icon: Icon, focused, color }: { icon: any; focused: boolea
 }
 
 export default function TabLayout() {
+  const { colors } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#00F5FF',
-        tabBarInactiveTintColor: '#6B7280',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#0F0F23',
+          backgroundColor: colors.card,
           borderTopWidth: 1,
-          borderTopColor: '#1F1F3A',
+          borderTopColor: colors.border,
           height: 88,
           paddingTop: 8,
           paddingBottom: 24,
-          shadowColor: '#00F5FF',
+          shadowColor: colors.text,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
@@ -42,7 +45,7 @@ export default function TabLayout() {
         options={{
           title: 'Discover',
           tabBarIcon: ({ focused, color }) => (
-            <TabBarIcon icon={Heart} focused={focused} color={color} />
+            <TabBarIcon icon={Compass} focused={focused} color={color} />
           ),
         }}
       />
@@ -98,7 +101,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    shadowColor: '#00F5FF',
+    shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
