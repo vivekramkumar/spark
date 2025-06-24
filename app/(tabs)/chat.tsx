@@ -713,6 +713,12 @@ export default function ChatScreen() {
                     style={styles.gameSelectorGradient}
                   >
                     <View style={styles.gameSelectorHeader}>
+                  returnKeyType="send"
+                  onSubmitEditing={() => {
+                    if (inputText.trim()) {
+                      sendMessage();
+                    }
+                  }}
                       <Text style={styles.gameSelectorTitle}>Choose a Game</Text>
                       <TouchableOpacity onPress={() => setShowGameSelector(false)}>
                         <Text style={styles.gameSelectorClose}>✕</Text>
@@ -1083,21 +1089,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
+    maxWidth: '100%',
   },
   gameInviteCard: {
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.3)',
+    maxWidth: '100%',
   },
   gameInviteContent: {
     padding: screenWidth * 0.05,
+    maxWidth: '100%',
   },
   gameInviteHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: screenHeight * 0.02,
+    maxWidth: '100%',
   },
   gameIconWrapper: {
     marginRight: screenWidth * 0.04,
+    flexShrink: 0,
   },
   gameIconContainer: {
     width: screenWidth * 0.15,
@@ -1110,15 +1121,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    flexShrink: 0,
   },
   gameInviteInfo: {
     flex: 1,
+    minWidth: 0,
   },
   gameInviteTitle: {
     fontSize: Math.min(screenWidth * 0.055, 22),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
     marginBottom: 6,
+    flexWrap: 'wrap',
   },
   gameInviteDescription: {
     fontSize: Math.min(screenWidth * 0.035, 14),
@@ -1126,15 +1140,18 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginBottom: screenHeight * 0.015,
     lineHeight: 20,
+    flexWrap: 'wrap',
   },
   gameMetaInfo: {
     flexDirection: 'row',
     gap: screenWidth * 0.04,
+    flexWrap: 'wrap',
   },
   gameMetaItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    flexShrink: 0,
   },
   gameMetaText: {
     fontSize: Math.min(screenWidth * 0.03, 12),
@@ -1143,21 +1160,25 @@ const styles = StyleSheet.create({
   },
   gameInviteActions: {
     gap: screenHeight * 0.015,
+    maxWidth: '100%',
   },
   gameInviteStatus: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   gameInviteFrom: {
     fontSize: Math.min(screenWidth * 0.03, 12),
     fontFamily: 'Inter-Medium',
     color: '#00F5FF',
+    flex: 1,
   },
   gameInviteTime: {
     fontSize: Math.min(screenWidth * 0.03, 12),
     fontFamily: 'Inter-Medium',
     color: 'rgba(255, 255, 255, 0.6)',
+    flexShrink: 0,
   },
   joinGameButton: {
     borderRadius: 16,
@@ -1167,6 +1188,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    maxWidth: '100%',
   },
   joinGameButtonGradient: {
     flexDirection: 'row',
@@ -1175,6 +1197,7 @@ const styles = StyleSheet.create({
     paddingVertical: screenHeight * 0.02,
     paddingHorizontal: screenWidth * 0.06,
     gap: 8,
+    flexWrap: 'wrap',
   },
   joinGameButtonText: {
     fontSize: Math.min(screenWidth * 0.04, 16),
@@ -1184,24 +1207,28 @@ const styles = StyleSheet.create({
   gameActiveStatus: {
     borderRadius: 12,
     overflow: 'hidden',
+    maxWidth: '100%',
   },
   gameActiveGradient: {
     paddingVertical: screenHeight * 0.015,
     paddingHorizontal: screenWidth * 0.04,
     borderWidth: 1,
     borderColor: 'rgba(6, 255, 165, 0.3)',
+    maxWidth: '100%',
   },
   gameActiveIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   gameActiveDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     backgroundColor: '#06FFA5',
+    flexShrink: 0,
   },
   gameActiveText: {
     fontSize: Math.min(screenWidth * 0.035, 14),

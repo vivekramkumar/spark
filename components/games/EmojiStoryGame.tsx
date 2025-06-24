@@ -7,8 +7,13 @@ import {
   ScrollView,
   TextInput,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heart, Trophy, Clock, Send, Shuffle } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -87,6 +92,7 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
 
   const handleSubmitStory = () => {
     if (isProcessingRound) return;
+    Keyboard.dismiss();
     
     setIsProcessingRound(true);
     
@@ -147,6 +153,10 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   if (gamePhase === 'completed') {
     const winner = playerScore > opponentScore ? 'You' : 'Luna';
     return (
@@ -155,7 +165,8 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
           style={styles.backgroundGradient}
         >
-          <View style={styles.completedContainer}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.completedContainer}>
             <Heart size={Math.min(screenWidth * 0.16, 64)} color="#FF9F1C" />
             <Text style={styles.completedTitle}>Stories Complete!</Text>
             <Text style={styles.completedWinner}>{winner} Won!</Text>
@@ -173,13 +184,15 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
                 <Text style={styles.continueButtonText}>Continue to Chat</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+            </View>
+          </SafeAreaView>
         </LinearGradient>
       </View>
     );
   }
 
   return (
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
     <View style={styles.container}>
       <LinearGradient
         colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
@@ -256,6 +269,12 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
               >
                 <LinearGradient
                   colors={playerStory.trim() && !isProcessingRound ? ['#FF9F1C', '#FFBF69'] : ['#374151', '#4B5563']}
+          <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView 
+              style={styles.keyboardView}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+            >
                   style={styles.submitButtonGradient}
                 >
                   <Send size={Math.min(screenWidth * 0.05, 20)} color="#FFFFFF" />
@@ -293,6 +312,8 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
                 <View style={styles.storyResult}>
                   <Text style={styles.storyAuthor}>Luna's Story:</Text>
                   <ScrollView style={styles.storyScroll}>
+                    returnKeyType="done"
+                    onSubmitEditing={dismissKeyboard}
                     <Text style={styles.storyText}>{opponentStory}</Text>
                   </ScrollView>
                 </View>
@@ -306,8 +327,11 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
             </View>
           )}
         </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
       </LinearGradient>
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -316,6 +340,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backgroundGradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
     padding: screenWidth * 0.05,
   },

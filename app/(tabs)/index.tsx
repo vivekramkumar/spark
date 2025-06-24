@@ -89,48 +89,46 @@ export default function DiscoverScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showMatch, setShowMatch] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isScrolling, setIsScrolling] = useState(false);
   const position = useRef(new Animated.ValueXY()).current;
   const rotation = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const panResponder = PanResponder.create({
-    onMoveShouldSetPanResponder: (_, gesture) => {
-      // Only allow pan gestures if not scrolling and gesture is significant enough
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (evt, gesture) => {
       const { dx, dy } = gesture;
-      const threshold = 10;
-      return !isScrolling && (Math.abs(dx) > threshold || Math.abs(dy) > threshold);
+      const threshold = 15;
+      // Only allow horizontal swipes, not vertical scrolling
+      return Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy);
     },
     onPanResponderGrant: () => {
-      // Dismiss keyboard when starting to pan
       Keyboard.dismiss();
+      setScrollEnabled(false);
     },
     onPanResponderMove: (_, gesture) => {
-      if (!isScrolling) {
-        position.setValue({ x: gesture.dx, y: gesture.dy });
-        rotation.setValue(gesture.dx * 0.05);
-      }
+      position.setValue({ x: gesture.dx, y: 0 });
+      rotation.setValue(gesture.dx * 0.05);
     },
     onPanResponderRelease: (_, gesture) => {
-      if (!isScrolling) {
-        const threshold = screenWidth * 0.25;
-        
-        if (gesture.dx > threshold) {
-          swipeRight();
-        } else if (gesture.dx < -threshold) {
-          swipeLeft();
-        } else {
-          Animated.parallel([
-            Animated.spring(position, {
-              toValue: { x: 0, y: 0 },
-              useNativeDriver: false,
-            }),
-            Animated.spring(rotation, {
-              toValue: 0,
-              useNativeDriver: false,
-            }),
-          ]).start();
-        }
+      setScrollEnabled(true);
+      const threshold = screenWidth * 0.25;
+      
+      if (gesture.dx > threshold) {
+        swipeRight();
+      } else if (gesture.dx < -threshold) {
+        swipeLeft();
+      } else {
+        Animated.parallel([
+          Animated.spring(position, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+          }),
+          Animated.spring(rotation, {
+            toValue: 0,
+            useNativeDriver: false,
+          }),
+        ]).start();
       }
     },
   });
@@ -205,18 +203,6 @@ export default function DiscoverScreen() {
     } else if (side === 'right' && currentImageIndex < currentProfile.images.length - 1) {
       setCurrentImageIndex(currentImageIndex + 1);
     }
-  };
-
-  const handleScrollBegin = () => {
-    setIsScrolling(true);
-    Keyboard.dismiss();
-  };
-
-  const handleScrollEnd = () => {
-    // Add a small delay to prevent immediate pan gestures after scrolling
-    setTimeout(() => {
-      setIsScrolling(false);
-    }, 100);
   };
 
   const dismissKeyboard = () => {
@@ -327,10 +313,7 @@ export default function DiscoverScreen() {
                   showsVerticalScrollIndicator={false}
                   bounces={true}
                   scrollEventThrottle={16}
-                  onScrollBeginDrag={handleScrollBegin}
-                  onScrollEndDrag={handleScrollEnd}
-                  onMomentumScrollBegin={handleScrollBegin}
-                  onMomentumScrollEnd={handleScrollEnd}
+                  scrollEnabled={scrollEnabled}
                   contentContainerStyle={styles.scrollContent}
                   nestedScrollEnabled={true}
                 >

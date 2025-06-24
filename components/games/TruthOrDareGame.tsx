@@ -7,9 +7,17 @@ import {
   ScrollView,
   Animated,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Dimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Eye, Trophy, Clock, Send } from 'lucide-react-native';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface Question {
   id: string;
@@ -139,6 +147,7 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
   };
 
   const handleSubmitAnswer = () => {
+    Keyboard.dismiss();
     if (!playerAnswer.trim()) {
       setPlayerAnswer("I prefer to keep this one private! 😊");
     }
@@ -154,6 +163,7 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
   };
 
   const handleSkip = () => {
+    Keyboard.dismiss();
     setPlayerAnswer("I'll pass on this one! 😅");
     setIsTimerActive(false);
     setGamePhase('viewing');
@@ -197,6 +207,10 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
     }
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   if (gamePhase === 'completed') {
     const winner = playerScore > opponentScore ? 'You' : 'Luna';
     return (
@@ -205,8 +219,9 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
           style={styles.backgroundGradient}
         >
-          <View style={styles.completedContainer}>
-            <Trophy size={64} color="#FFD700" />
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.completedContainer}>
+            <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
             <Text style={styles.completedTitle}>Truth Session Complete!</Text>
             <Text style={styles.completedWinner}>{winner} shared the most!</Text>
             <Text style={styles.completedScore}>
@@ -223,13 +238,15 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
                 <Text style={styles.continueButtonText}>Continue to Chat</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+            </View>
+          </SafeAreaView>
         </LinearGradient>
       </View>
     );
   }
 
   return (
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
     <View style={styles.container}>
       <LinearGradient
         colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
@@ -317,6 +334,12 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
                 autoFocus
               />
 
+          <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView 
+              style={styles.keyboardView}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+            >
               <Text style={styles.characterCount}>{playerAnswer.length}/500</Text>
 
               <View style={styles.answerActions}>
@@ -336,6 +359,11 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
 
                 <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
                   <Text style={styles.skipButtonText}>Skip Question</Text>
+                  onFocus={() => {
+                    // Don't auto-focus to prevent keyboard opening issues
+                  }}
+                  returnKeyType="done"
+                  onSubmitEditing={dismissKeyboard}
                 </TouchableOpacity>
               </View>
             </View>
@@ -378,8 +406,11 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
             </View>
           )}
         </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
       </LinearGradient>
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -389,65 +420,73 @@ const styles = StyleSheet.create({
   },
   backgroundGradient: {
     flex: 1,
-    padding: 20,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+    padding: screenWidth * 0.05,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
+    paddingTop: screenHeight * 0.02,
+    minHeight: screenHeight * 0.08,
   },
   backButton: {
     padding: 8,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Medium',
     color: '#00F5FF',
   },
   gameTitle: {
-    fontSize: 24,
+    fontSize: Math.min(screenWidth * 0.06, 24),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
   },
   roundInfo: {
     backgroundColor: 'rgba(0, 245, 255, 0.1)',
-    paddingHorizontal: 12,
+    paddingHorizontal: screenWidth * 0.03,
     paddingVertical: 6,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(0, 245, 255, 0.3)',
   },
   roundText: {
-    fontSize: 12,
+    fontSize: Math.min(screenWidth * 0.03, 12),
     fontFamily: 'Inter-Bold',
     color: '#00F5FF',
   },
   scoreBoard: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   scoreItem: {
     alignItems: 'center',
   },
   scoreLabel: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     marginBottom: 4,
   },
   scoreValue: {
-    fontSize: 32,
+    fontSize: Math.min(screenWidth * 0.08, 32),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
   },
   currentPlayerIndicator: {
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   currentPlayerText: {
-    fontSize: 18,
+    fontSize: Math.min(screenWidth * 0.045, 18),
     fontFamily: 'Inter-Bold',
     color: '#00F5FF',
   },
@@ -458,7 +497,7 @@ const styles = StyleSheet.create({
   questionContainer: {
     backgroundColor: 'rgba(31, 31, 58, 0.8)',
     borderRadius: 20,
-    padding: 24,
+    padding: screenWidth * 0.06,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
@@ -466,59 +505,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: screenWidth * 0.04,
     paddingVertical: 8,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: screenHeight * 0.015,
     alignSelf: 'center',
     backgroundColor: '#9D4EDD',
   },
   questionTypeText: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
-    marginLeft: 8,
+    marginLeft: screenWidth * 0.02,
   },
   difficultyBadge: {
-    paddingHorizontal: 12,
+    paddingHorizontal: screenWidth * 0.03,
     paddingVertical: 6,
     borderRadius: 8,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   difficultyText: {
-    fontSize: 12,
+    fontSize: Math.min(screenWidth * 0.03, 12),
     fontFamily: 'Inter-Bold',
     color: '#0F0F23',
   },
   questionScroll: {
-    maxHeight: 200,
-    marginBottom: 24,
+    maxHeight: screenHeight * 0.25,
+    marginBottom: screenHeight * 0.03,
   },
   questionText: {
-    fontSize: 20,
+    fontSize: Math.min(screenWidth * 0.05, 20),
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 28,
+    lineHeight: Math.min(screenWidth * 0.07, 28),
   },
   startAnswerButton: {
     borderRadius: 16,
     overflow: 'hidden',
   },
   startAnswerButtonGradient: {
-    paddingVertical: 16,
+    paddingVertical: screenHeight * 0.02,
     alignItems: 'center',
   },
   startAnswerButtonText: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
   },
   answeringContainer: {
     backgroundColor: 'rgba(31, 31, 58, 0.8)',
     borderRadius: 20,
-    padding: 24,
+    padding: screenWidth * 0.06,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
@@ -526,51 +565,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: screenHeight * 0.02,
   },
   timerText: {
-    fontSize: 18,
+    fontSize: Math.min(screenWidth * 0.045, 18),
     fontFamily: 'Inter-Bold',
     color: '#FFD700',
-    marginLeft: 8,
+    marginLeft: screenWidth * 0.02,
   },
   answeringTitle: {
-    fontSize: 20,
+    fontSize: Math.min(screenWidth * 0.05, 20),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: screenHeight * 0.015,
   },
   questionReminder: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 22,
+    marginBottom: screenHeight * 0.025,
+    lineHeight: Math.min(screenWidth * 0.055, 22),
   },
   answerInput: {
     backgroundColor: 'rgba(31, 31, 58, 0.5)',
     borderRadius: 16,
-    padding: 16,
-    fontSize: 16,
+    padding: screenWidth * 0.04,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Regular',
     color: '#FFFFFF',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    minHeight: 120,
+    minHeight: screenHeight * 0.15,
     textAlignVertical: 'top',
-    marginBottom: 8,
+    marginBottom: screenHeight * 0.01,
   },
   characterCount: {
-    fontSize: 12,
+    fontSize: Math.min(screenWidth * 0.03, 12),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     textAlign: 'right',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   answerActions: {
-    gap: 12,
+    gap: screenHeight * 0.015,
   },
   submitButton: {
     borderRadius: 16,
@@ -580,115 +619,116 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    paddingVertical: screenHeight * 0.02,
+    gap: screenWidth * 0.02,
   },
   submitButtonText: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
   },
   skipButton: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: screenHeight * 0.015,
   },
   skipButtonText: {
-    fontSize: 14,
+    fontSize: Math.min(screenWidth * 0.035, 14),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     textDecorationLine: 'underline',
   },
   viewingContainer: {
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: screenWidth * 0.05,
   },
   viewingTitle: {
-    fontSize: 20,
+    fontSize: Math.min(screenWidth * 0.05, 20),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   answerDisplay: {
     width: '100%',
     borderRadius: 16,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   answerDisplayGradient: {
-    padding: 20,
+    padding: screenWidth * 0.05,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   answerText: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Regular',
     color: '#FFFFFF',
-    lineHeight: 24,
+    lineHeight: Math.min(screenWidth * 0.06, 24),
     textAlign: 'center',
   },
   viewingSubtitle: {
-    fontSize: 14,
+    fontSize: Math.min(screenWidth * 0.035, 14),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     textAlign: 'center',
   },
   waitingContainer: {
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: screenWidth * 0.05,
   },
   waitingTitle: {
-    fontSize: 24,
+    fontSize: Math.min(screenWidth * 0.06, 24),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
-    marginBottom: 8,
+    marginBottom: screenHeight * 0.01,
   },
   waitingSubtitle: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
-    marginBottom: 20,
+    marginBottom: screenHeight * 0.025,
   },
   completedContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: screenWidth * 0.05,
   },
   completedTitle: {
-    fontSize: 32,
+    fontSize: Math.min(screenWidth * 0.08, 32),
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
-    marginTop: 20,
-    marginBottom: 8,
+    marginTop: screenHeight * 0.025,
+    marginBottom: screenHeight * 0.01,
   },
   completedWinner: {
-    fontSize: 24,
+    fontSize: Math.min(screenWidth * 0.06, 24),
     fontFamily: 'Inter-Bold',
     color: '#00F5FF',
-    marginBottom: 16,
+    marginBottom: screenHeight * 0.02,
   },
   completedScore: {
-    fontSize: 18,
+    fontSize: Math.min(screenWidth * 0.045, 18),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
-    marginBottom: 16,
+    marginBottom: screenHeight * 0.02,
   },
   completedSubtitle: {
-    fontSize: 16,
+    fontSize: Math.min(screenWidth * 0.04, 16),
     fontFamily: 'Inter-Medium',
     color: '#9CA3AF',
     textAlign: 'center',
-    marginBottom: 40,
+    marginBottom: screenHeight * 0.05,
   },
   continueButton: {
     borderRadius: 20,
     overflow: 'hidden',
   },
   continueButtonGradient: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
+    paddingHorizontal: screenWidth * 0.08,
+    paddingVertical: screenHeight * 0.02,
   },
   continueButtonText: {
-    fontSize: 18,
+    fontSize: Math.min(screenWidth * 0.045, 18),
     fontFamily: 'Inter-Bold',
     color: '#0F0F23',
   },

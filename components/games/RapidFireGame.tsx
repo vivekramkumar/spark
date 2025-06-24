@@ -7,8 +7,13 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Zap, Trophy, Clock, CircleCheck as CheckCircle, Circle, User, Users } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -173,6 +178,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
 
   const handleAnswer = (answer: string) => {
     if (isProcessingTurn || currentPlayer !== 'player') return;
+    Keyboard.dismiss();
     
     setIsProcessingTurn(true);
     setPlayerAnswers(prev => [...prev, answer]);
@@ -186,6 +192,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
 
   const handleSkip = () => {
     if (isProcessingTurn || currentPlayer !== 'player') return;
+    Keyboard.dismiss();
     
     setIsProcessingTurn(true);
     setPlayerAnswers(prev => [...prev, "Skipped"]);
@@ -224,6 +231,10 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
     setTimeout(() => onGameComplete('player'), 500);
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   if (gamePhase === 'results') {
     return (
       <View style={styles.container}>
@@ -231,6 +242,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
           style={styles.backgroundGradient}
         >
+          <SafeAreaView style={styles.safeArea}>
           <View style={styles.resultsContainer}>
             <View style={styles.resultsHeader}>
               <Zap size={Math.min(screenWidth * 0.08, 32)} color="#FFD60A" />
@@ -307,6 +319,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
               </TouchableOpacity>
             </View>
           </View>
+          </SafeAreaView>
         </LinearGradient>
       </View>
     );
@@ -319,7 +332,8 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
           style={styles.backgroundGradient}
         >
-          <View style={styles.completedContainer}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.completedContainer}>
             <Zap size={Math.min(screenWidth * 0.16, 64)} color="#FFD60A" />
             <Text style={styles.completedTitle}>Lightning Round Complete!</Text>
             <Text style={styles.completedSubtitle}>
@@ -336,13 +350,15 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
                 <Text style={styles.continueButtonText}>Start Chatting</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+            </View>
+          </SafeAreaView>
         </LinearGradient>
       </View>
     );
   }
 
   return (
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
     <View style={styles.container}>
       <LinearGradient
         colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
@@ -363,6 +379,12 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
             {currentPlayer === 'player' ? "Your Turn!" : "Luna's Turn"}
           </Text>
         </View>
+          <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView 
+              style={styles.keyboardView}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+            >
 
         {currentPlayer === 'player' && gamePhase === 'question' && gameStarted && (
           <View style={styles.timerContainer}>
@@ -481,8 +503,11 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
             </View>
           </ScrollView>
         </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
       </LinearGradient>
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -491,6 +516,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backgroundGradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
     padding: screenWidth * 0.05,
   },
@@ -745,6 +776,7 @@ const styles = StyleSheet.create({
   resultsContainer: {
     flex: 1,
     paddingTop: screenHeight * 0.02,
+    paddingHorizontal: screenWidth * 0.05,
   },
   resultsHeader: {
     alignItems: 'center',

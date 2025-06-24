@@ -7,8 +7,13 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Target, Trophy, ArrowLeft, ArrowRight } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -151,6 +156,7 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
 
   const handlePlayerChoice = (choice: 'A' | 'B') => {
     if (isProcessingRound) return;
+    Keyboard.dismiss();
     
     setPlayerChoice(choice);
     setGamePhase('waiting');
@@ -200,6 +206,10 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
     }
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   if (gamePhase === 'completed') {
     const compatibilityScore = Math.round(((playerScore + opponentScore) / (maxRounds * 4)) * 100);
     return (
@@ -208,7 +218,8 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
           style={styles.backgroundGradient}
         >
-          <View style={styles.completedContainer}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.completedContainer}>
             <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
             <Text style={styles.completedTitle}>Perfect Match!</Text>
             <Text style={styles.compatibilityScore}>{compatibilityScore}% Compatible</Text>
@@ -223,134 +234,145 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
                 <Text style={styles.continueButtonText}>Start Chatting</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+            </View>
+          </SafeAreaView>
         </LinearGradient>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient
-        colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-        style={styles.backgroundGradient}
-      >
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>← Back</Text>
-          </TouchableOpacity>
-          <Text style={styles.gameTitle}>Would You Rather</Text>
-          <View style={styles.roundInfo}>
-            <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
+          style={styles.backgroundGradient}
+        >
+          <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView 
+              style={styles.keyboardView}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+            >
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={onBack}>
+              <Text style={styles.backButtonText}>← Back</Text>
+            </TouchableOpacity>
+            <Text style={styles.gameTitle}>Would You Rather</Text>
+            <View style={styles.roundInfo}>
+              <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.scoreBoard}>
-          <View style={styles.scoreItem}>
-            <Text style={styles.scoreLabel}>Compatibility</Text>
-            <Text style={styles.scoreValue}>{playerScore + opponentScore} pts</Text>
+          <View style={styles.scoreBoard}>
+            <View style={styles.scoreItem}>
+              <Text style={styles.scoreLabel}>Compatibility</Text>
+              <Text style={styles.scoreValue}>{playerScore + opponentScore} pts</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.gameArea}>
-          {currentQuestion && (
-            <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
-              <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentQuestion.category) }]}>
-                <Text style={styles.categoryText}>{currentQuestion.category.toUpperCase()}</Text>
-              </View>
-
-              <Text style={styles.questionTitle}>Would You Rather...</Text>
-
-              {gamePhase === 'question' && !playerChoice && !isProcessingRound && (
-                <View style={styles.optionsContainer}>
-                  <TouchableOpacity
-                    style={styles.optionButton}
-                    onPress={() => handlePlayerChoice('A')}
-                  >
-                    <LinearGradient
-                      colors={['rgba(0, 245, 255, 0.2)', 'rgba(0, 128, 255, 0.1)']}
-                      style={styles.optionGradient}
-                    >
-                      <ArrowLeft size={Math.min(screenWidth * 0.06, 24)} color="#00F5FF" />
-                      <ScrollView style={styles.optionTextContainer}>
-                        <Text style={styles.optionText}>{currentQuestion.optionA}</Text>
-                      </ScrollView>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <View style={styles.orDivider}>
-                    <Text style={styles.orText}>OR</Text>
-                  </View>
-
-                  <TouchableOpacity
-                    style={styles.optionButton}
-                    onPress={() => handlePlayerChoice('B')}
-                  >
-                    <LinearGradient
-                      colors={['rgba(255, 215, 0, 0.2)', 'rgba(255, 193, 7, 0.1)']}
-                      style={styles.optionGradient}
-                    >
-                      <ScrollView style={styles.optionTextContainer}>
-                        <Text style={styles.optionText}>{currentQuestion.optionB}</Text>
-                      </ScrollView>
-                      <ArrowRight size={Math.min(screenWidth * 0.06, 24)} color="#FFD700" />
-                    </LinearGradient>
-                  </TouchableOpacity>
+          <View style={styles.gameArea}>
+            {currentQuestion && (
+              <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
+                <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentQuestion.category) }]}>
+                  <Text style={styles.categoryText}>{currentQuestion.category.toUpperCase()}</Text>
                 </View>
-              )}
 
-              {gamePhase === 'waiting' && (
-                <View style={styles.waitingContainer}>
-                  <Text style={styles.waitingTitle}>Luna is choosing...</Text>
-                  {playerChoice && (
-                    <View style={styles.yourChoiceContainer}>
-                      <Text style={styles.yourChoiceLabel}>You chose:</Text>
-                      <Text style={styles.yourChoiceText}>
-                        {playerChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              )}
+                <Text style={styles.questionTitle}>Would You Rather...</Text>
 
-              {gamePhase === 'results' && playerChoice && opponentChoice && (
-                <View style={styles.resultsContainer}>
-                  <View style={styles.resultItem}>
-                    <Text style={styles.resultLabel}>You chose:</Text>
-                    <View style={[styles.resultChoice, { 
-                      backgroundColor: playerChoice === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
-                    }]}>
-                      <Text style={styles.resultText}>
-                        {playerChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
-                      </Text>
+                {gamePhase === 'question' && !playerChoice && !isProcessingRound && (
+                  <View style={styles.optionsContainer}>
+                    <TouchableOpacity
+                      style={styles.optionButton}
+                      onPress={() => handlePlayerChoice('A')}
+                    >
+                      <LinearGradient
+                        colors={['rgba(0, 245, 255, 0.2)', 'rgba(0, 128, 255, 0.1)']}
+                        style={styles.optionGradient}
+                      >
+                        <ArrowLeft size={Math.min(screenWidth * 0.06, 24)} color="#00F5FF" />
+                        <ScrollView style={styles.optionTextContainer}>
+                          <Text style={styles.optionText}>{currentQuestion.optionA}</Text>
+                        </ScrollView>
+                      </LinearGradient>
+                    </TouchableOpacity>
+
+                    <View style={styles.orDivider}>
+                      <Text style={styles.orText}>OR</Text>
                     </View>
+
+                    <TouchableOpacity
+                      style={styles.optionButton}
+                      onPress={() => handlePlayerChoice('B')}
+                    >
+                      <LinearGradient
+                        colors={['rgba(255, 215, 0, 0.2)', 'rgba(255, 193, 7, 0.1)']}
+                        style={styles.optionGradient}
+                      >
+                        <ScrollView style={styles.optionTextContainer}>
+                          <Text style={styles.optionText}>{currentQuestion.optionB}</Text>
+                        </ScrollView>
+                        <ArrowRight size={Math.min(screenWidth * 0.06, 24)} color="#FFD700" />
+                      </LinearGradient>
+                    </TouchableOpacity>
                   </View>
+                )}
 
-                  <View style={styles.resultItem}>
-                    <Text style={styles.resultLabel}>Luna chose:</Text>
-                    <View style={[styles.resultChoice, { 
-                      backgroundColor: opponentChoice === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
-                    }]}>
-                      <Text style={styles.resultText}>
-                        {opponentChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.matchIndicator}>
-                    {playerChoice === opponentChoice ? (
-                      <Text style={styles.matchText}>🎯 Perfect Match! +2 points each</Text>
-                    ) : (
-                      <Text style={styles.differentText}>✨ Interesting contrast! +1 point each</Text>
+                {gamePhase === 'waiting' && (
+                  <View style={styles.waitingContainer}>
+                    <Text style={styles.waitingTitle}>Luna is choosing...</Text>
+                    {playerChoice && (
+                      <View style={styles.yourChoiceContainer}>
+                        <Text style={styles.yourChoiceLabel}>You chose:</Text>
+                        <Text style={styles.yourChoiceText}>
+                          {playerChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
+                        </Text>
+                      </View>
                     )}
                   </View>
-                </View>
-              )}
-            </Animated.View>
-          )}
-        </View>
-      </LinearGradient>
-    </View>
+                )}
+
+                {gamePhase === 'results' && playerChoice && opponentChoice && (
+                  <View style={styles.resultsContainer}>
+                    <View style={styles.resultItem}>
+                      <Text style={styles.resultLabel}>You chose:</Text>
+                      <View style={[styles.resultChoice, { 
+                        backgroundColor: playerChoice === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
+                      }]}>
+                        <Text style={styles.resultText}>
+                          {playerChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.resultItem}>
+                      <Text style={styles.resultLabel}>Luna chose:</Text>
+                      <View style={[styles.resultChoice, { 
+                        backgroundColor: opponentChoice === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
+                      }]}>
+                        <Text style={styles.resultText}>
+                          {opponentChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.matchIndicator}>
+                      {playerChoice === opponentChoice ? (
+                        <Text style={styles.matchText}>🎯 Perfect Match! +2 points each</Text>
+                      ) : (
+                        <Text style={styles.differentText}>✨ Interesting contrast! +1 point each</Text>
+                      )}
+                    </View>
+                  </View>
+                )}
+              </Animated.View>
+            )}
+          </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
+        </LinearGradient>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -359,6 +381,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backgroundGradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
     padding: screenWidth * 0.05,
   },

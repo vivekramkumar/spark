@@ -7,8 +7,13 @@ import {
   ScrollView,
   Animated,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Flame, Trophy, Clock, ThumbsUp, ThumbsDown } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -93,6 +98,7 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
 
   const handlePlayerChoice = (choice: 'done' | 'never') => {
     if (isProcessingRound) return;
+    Keyboard.dismiss();
     
     setPlayerChoice(choice);
     setGamePhase('waiting');
@@ -156,6 +162,10 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
     ));
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   if (gamePhase === 'completed') {
     const winner = playerLives > opponentLives ? 'You' : 'Luna';
     return (
@@ -164,7 +174,8 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
           style={styles.backgroundGradient}
         >
-          <View style={styles.completedContainer}>
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.completedContainer}>
             <Trophy size={Math.min(screenWidth * 0.16, 64)} color="#FFD700" />
             <Text style={styles.completedTitle}>Game Complete!</Text>
             <Text style={styles.completedWinner}>{winner} Won!</Text>
@@ -179,13 +190,15 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
                 <Text style={styles.continueButtonText}>Continue to Chat</Text>
               </LinearGradient>
             </TouchableOpacity>
-          </View>
+            </View>
+          </SafeAreaView>
         </LinearGradient>
       </View>
     );
   }
 
   return (
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
     <View style={styles.container}>
       <LinearGradient
         colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
@@ -206,6 +219,12 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
             <Text style={styles.livesLabel}>You</Text>
             <View style={styles.livesRow}>
               {renderLives(playerLives)}
+          <SafeAreaView style={styles.safeArea}>
+            <KeyboardAvoidingView 
+              style={styles.keyboardView}
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              keyboardVerticalOffset={0}
+            >
             </View>
           </View>
           <View style={styles.playerLives}>
@@ -295,8 +314,11 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
             </Animated.View>
           )}
         </View>
+            </KeyboardAvoidingView>
+          </SafeAreaView>
       </LinearGradient>
     </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -305,6 +327,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backgroundGradient: {
+    flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+  },
+  keyboardView: {
     flex: 1,
     padding: screenWidth * 0.05,
   },
