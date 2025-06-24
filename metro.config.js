@@ -8,7 +8,7 @@ config.resolver.platforms = ['ios', 'android', 'native', 'web'];
 // Add source extensions
 config.resolver.sourceExts.push('sql');
 
-// Disable new architecture features that might cause crashes
-config.transformer.unstable_allowRequireContext = false;
+// Enable require.context feature for expo-router
+config.transformer.unstable_allowRequireContext = true;
 
 module.exports = config;
