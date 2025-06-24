@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Trophy, Heart, MessageCircle, Star, Edit3, Camera, Moon, Sun } from 'lucide-react-native';
+import { Settings, Trophy, Heart, MessageCircle, Star, CreditCard as Edit3, Camera, Moon, Sun } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 
