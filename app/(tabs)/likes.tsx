@@ -1,18 +1,19 @@
+import UserProfileView from '@/components/UserProfileView';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Crown, Heart, MapPin } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Dimensions,
-  Animated,
-  PanResponder,
+    Animated,
+    Dimensions,
+    Image,
+    PanResponder,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, X, Star, Crown, MapPin, ArrowLeft } from 'lucide-react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -168,6 +169,16 @@ export default function LikesScreen() {
     extrapolate: 'clamp',
   });
 
+  // Handle like action
+  const handleLike = () => {
+    handleSwipeRight();
+  };
+
+  // Handle pass action
+  const handlePass = () => {
+    handleSwipeLeft();
+  };
+
   if (showMatch) {
     return (
       <View style={styles.matchContainer}>
@@ -198,157 +209,35 @@ export default function LikesScreen() {
   }
 
   if (selectedProfile) {
+    // Convert the selected profile to the format expected by UserProfileView
+    const userProfile = {
+      id: selectedProfile.id,
+      name: selectedProfile.name,
+      age: selectedProfile.age,
+      bio: selectedProfile.bio,
+      images: selectedProfile.images,
+      level: selectedProfile.level,
+      distance: selectedProfile.distance,
+      location: selectedProfile.location,
+      interests: selectedProfile.interests,
+      tags: selectedProfile.tags || [],
+      gamesWon: selectedProfile.gamesWon || 0,
+      streak: selectedProfile.streak || 0
+    };
+
     return (
-      <View style={styles.container}>
-        <LinearGradient
-          colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-          style={styles.backgroundGradient}
-        >
-          <SafeAreaView style={styles.safeArea}>
-            <View style={styles.profileHeader}>
-              <TouchableOpacity 
-                style={styles.backButton}
-                onPress={() => {
-                  setSelectedProfile(null);
-                  setCurrentImageIndex(0);
-                }}
-              >
-                <ArrowLeft size={24} color="#00F5FF" />
-              </TouchableOpacity>
-              <Text style={styles.profileHeaderTitle}>{selectedProfile.name}</Text>
-              <View style={styles.placeholder} />
-            </View>
-
-            <View style={styles.profileContainer}>
-              <Animated.View
-                style={[
-                  styles.profileCard,
-                  {
-                    transform: [
-                      { translateX: position.x },
-                      { translateY: position.y },
-                      { rotate: rotateInterpolate },
-                    ],
-                  },
-                ]}
-                {...panResponder.panHandlers}
-              >
-                {/* Overlays */}
-                <Animated.View style={[styles.overlay, styles.likeOverlay, { opacity: likeOpacity }]}>
-                  <LinearGradient
-                    colors={['rgba(0, 245, 255, 0.9)', 'rgba(0, 128, 255, 0.9)']}
-                    style={styles.overlayGradient}
-                  >
-                    <Text style={styles.overlayText}>MATCH!</Text>
-                  </LinearGradient>
-                </Animated.View>
-
-                <Animated.View style={[styles.overlay, styles.passOverlay, { opacity: passOpacity }]}>
-                  <LinearGradient
-                    colors={['rgba(255, 59, 48, 0.9)', 'rgba(255, 69, 58, 0.9)']}
-                    style={styles.overlayGradient}
-                  >
-                    <Text style={styles.overlayText}>PASS</Text>
-                  </LinearGradient>
-                </Animated.View>
-
-                <ScrollView style={styles.profileScroll} showsVerticalScrollIndicator={false}>
-                  {/* Main Image */}
-                  <View style={styles.imageContainer}>
-                    <Image 
-                      source={{ uri: selectedProfile.images[currentImageIndex] }} 
-                      style={styles.mainImage} 
-                    />
-                    
-                    {/* Image Navigation */}
-                    <TouchableOpacity 
-                      style={[styles.imageNavButton, styles.imageNavLeft]}
-                      onPress={() => handleImageTap('left')}
-                    />
-                    <TouchableOpacity 
-                      style={[styles.imageNavButton, styles.imageNavRight]}
-                      onPress={() => handleImageTap('right')}
-                    />
-                    
-                    {/* Image Indicators */}
-                    <View style={styles.imageIndicators}>
-                      {selectedProfile.images.map((_: any, index: number) => (
-                        <View
-                          key={index}
-                          style={[
-                            styles.imageIndicator,
-                            { backgroundColor: index === currentImageIndex ? '#00F5FF' : 'rgba(255, 255, 255, 0.3)' }
-                          ]}
-                        />
-                      ))}
-                    </View>
-
-                    {/* Basic Info Overlay */}
-                    <LinearGradient
-                      colors={['transparent', 'rgba(15, 15, 35, 0.8)']}
-                      style={styles.imageOverlay}
-                    >
-                      <View style={styles.basicInfo}>
-                        <View style={styles.nameRow}>
-                          <Text style={styles.profileName}>{selectedProfile.name}, {selectedProfile.age}</Text>
-                          <View style={styles.levelBadge}>
-                            <Crown size={14} color="#FFD700" />
-                            <Text style={styles.levelText}>LVL {selectedProfile.level}</Text>
-                          </View>
-                        </View>
-                        <View style={styles.locationRow}>
-                          <MapPin size={14} color="#9CA3AF" />
-                          <Text style={styles.locationText}>{selectedProfile.location}</Text>
-                          <Text style={styles.distanceText}>{selectedProfile.distance} km away</Text>
-                        </View>
-                      </View>
-                    </LinearGradient>
-                  </View>
-
-                  {/* Bio Section */}
-                  <View style={styles.bioSection}>
-                    <Text style={styles.bioText}>{selectedProfile.bio}</Text>
-                  </View>
-
-                  {/* Interests */}
-                  <View style={styles.interestsSection}>
-                    <Text style={styles.sectionTitle}>Interests</Text>
-                    <View style={styles.interestsGrid}>
-                      {selectedProfile.interests.map((interest: string, index: number) => (
-                        <View key={index} style={styles.interestItem}>
-                          <Text style={styles.interestText}>{interest}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-
-                  <View style={styles.bottomPadding} />
-                </ScrollView>
-              </Animated.View>
-            </View>
-
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity style={[styles.actionButton, styles.passButton]} onPress={handleSwipeLeft}>
-                <LinearGradient
-                  colors={['rgba(255, 59, 48, 0.2)', 'rgba(255, 69, 58, 0.2)']}
-                  style={styles.buttonGradient}
-                >
-                  <X size={28} color="#FF3B30" />
-                </LinearGradient>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={[styles.actionButton, styles.likeButton]} onPress={handleSwipeRight}>
-                <LinearGradient
-                  colors={['rgba(0, 245, 255, 0.2)', 'rgba(0, 128, 255, 0.2)']}
-                  style={styles.buttonGradient}
-                >
-                  <Heart size={28} color="#00F5FF" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </LinearGradient>
-      </View>
+      <UserProfileView
+        profile={userProfile}
+        onClose={() => {
+          setSelectedProfile(null);
+          setCurrentImageIndex(0);
+          position.setValue({ x: 0, y: 0 });
+          rotation.setValue(0);
+        }}
+        onLike={handleLike}
+        onPass={handlePass}
+        showButtons={true}
+      />
     );
   }
 

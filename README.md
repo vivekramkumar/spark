@@ -13,14 +13,16 @@ A React Native dating app built with Expo that connects gamers through interacti
 
 ## 🛠 Setup Instructions
 
-### 1. Create Supabase Project
+### Option 1: Production Setup (Remote Supabase)
+
+#### 1. Create Supabase Project
 
 1. Go to [supabase.com](https://supabase.com) and create a new project
 2. **IMPORTANT**: Wait for the project to be fully set up (this can take 2-3 minutes)
 3. Go to Settings > API in your Supabase dashboard
 4. Copy your Project URL and anon/public key
 
-### 2. Configure Environment Variables
+#### 2. Configure Environment Variables
 
 1. Create a `.env` file in the root directory
 2. Add your Supabase credentials:
@@ -36,12 +38,64 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 - Don't include quotes around the values
 - Make sure there are no spaces around the `=` sign
 
-### 3. Set Up Database
+#### 3. Set Up Database
 
 1. In your Supabase dashboard, go to **SQL Editor**
 2. Copy the entire SQL content from `supabase/migrations/20250623181540_wispy_pebble.sql`
 3. Paste it into the SQL editor and click **Run**
 4. This creates the `profiles` table and security policies
+
+### Option 2: Local Development Setup
+
+For local development, we've provided scripts to help you set up a local Supabase instance:
+
+#### Prerequisites
+
+- [Docker](https://www.docker.com/) (required for local Supabase)
+- [Supabase CLI](https://supabase.com/docs/guides/cli)
+- [Xcode](https://developer.apple.com/xcode/) (for iOS emulator)
+
+#### Quick Setup
+
+1. Run the initialization script:
+
+```bash
+./init-local-db.sh
+```
+
+This script will:
+- Create a `.env` file with local Supabase credentials
+- Initialize Supabase locally
+- Start the local Supabase services
+- Apply the database migrations
+
+2. Start the development server:
+
+```bash
+npm run dev
+```
+
+3. For iOS emulator:
+
+```bash
+npx expo run:ios
+```
+
+#### Manual Setup
+
+If you prefer to set up manually, follow the instructions in the `LOCAL_DEVELOPMENT.md` file.
+
+#### Switching Between Local and Production
+
+Use the provided script to easily switch between environments:
+
+```bash
+# Switch to local development
+./switch-env.sh local
+
+# Switch to production (requires setting PROD_SUPABASE_URL and PROD_SUPABASE_ANON_KEY)
+./switch-env.sh prod
+```
 
 ### 4. Restart Development Server
 
@@ -74,6 +128,13 @@ This usually means one of the following:
    - Make sure the `.env` file is in the project root (same level as `package.json`)
 
 5. **Database Not Set Up**: Run the migration SQL in your Supabase dashboard.
+
+### Local Development Issues
+
+1. **Docker Not Running**: Make sure Docker is running on your machine
+2. **Supabase CLI Not Installed**: Install with `npm install -g supabase`
+3. **Port Conflicts**: Make sure ports 54321-54326 are available
+4. **Database Reset**: If schema issues occur, run `supabase db reset`
 
 ### Connection Test Failed
 

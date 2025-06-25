@@ -1,46 +1,44 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
+  ArrowLeft,
+  Clock,
+  Crown,
+  Eye,
+  Flame,
+  Gamepad2,
+  Heart,
+  Play,
+  Plus,
+  Send,
+  Smile,
+  Target,
+  Users,
+  Zap
+} from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  Dimensions,
+  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  Image,
-  Dimensions,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   TouchableWithoutFeedback,
-  Keyboard,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  Send, 
-  Smile, 
-  Image as ImageIcon, 
-  Clock, 
-  Star, 
-  Zap, 
-  Crown,
-  Flame,
-  Shield,
-  Gamepad2,
-  ArrowLeft,
-  Plus,
-  Play,
-  Eye,
-  Target,
-  Heart,
-  Users
-} from 'lucide-react-native';
 
 // Import game components
-import TruthOrDareGame from '@/components/games/TruthOrDareGame';
-import NeverHaveIEverGame from '@/components/games/NeverHaveIEverGame';
-import WouldYouRatherGame from '@/components/games/WouldYouRatherGame';
-import RapidFireGame from '@/components/games/RapidFireGame';
 import EmojiStoryGame from '@/components/games/EmojiStoryGame';
+import NeverHaveIEverGame from '@/components/games/NeverHaveIEverGame';
+import RapidFireGame from '@/components/games/RapidFireGame';
+import TruthOrDareGame from '@/components/games/TruthOrDareGame';
+import WouldYouRatherGame from '@/components/games/WouldYouRatherGame';
+import UserProfileView from '@/components/UserProfileView';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -201,6 +199,7 @@ export default function ChatScreen() {
   const [showGameSelector, setShowGameSelector] = useState(false);
   const [currentGame, setCurrentGame] = useState<string | null>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [viewingProfile, setViewingProfile] = useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -225,6 +224,9 @@ export default function ChatScreen() {
 
   const dismissKeyboard = () => {
     Keyboard.dismiss();
+    if (showGameSelector) {
+      setShowGameSelector(false);
+    }
   };
 
   const sendMessage = () => {
@@ -359,6 +361,40 @@ export default function ChatScreen() {
   const getGameData = (gameType: string) => {
     return AVAILABLE_GAMES.find(g => g.id === gameType) || AVAILABLE_GAMES[0];
   };
+  
+  // Function to view the user's profile
+  const handleViewProfile = () => {
+    if (selectedMatch) {
+      setViewingProfile(true);
+    }
+  };
+
+  // Render profile view
+  if (viewingProfile && selectedMatch) {
+    // Convert the ChatMatch to a profile format compatible with UserProfileView
+    const userProfile = {
+      id: selectedMatch.id,
+      name: selectedMatch.name,
+      age: 25, // Assuming age is not in the ChatMatch interface
+      bio: "Gaming enthusiast and coffee lover. Let's battle it out in some games! 🎮☕",
+      images: [selectedMatch.avatar, selectedMatch.avatar], // Using avatar as placeholder
+      level: selectedMatch.level,
+      streak: selectedMatch.streak,
+      tags: ["Gamer", "Competitive", "Strategic"],
+      interests: ["Gaming", "Coffee", "Music", "Movies"],
+      gamesWon: 42, // Placeholder
+      location: "San Francisco, CA", // Placeholder
+      distance: 5, // Placeholder in km
+    };
+
+    return (
+      <UserProfileView
+        profile={userProfile}
+        onClose={() => setViewingProfile(false)}
+        showButtons={false}
+      />
+    );
+  }
 
   // Render game screens
   if (currentGame && selectedMatch) {
@@ -475,8 +511,10 @@ export default function ChatScreen() {
 
             <ScrollView 
               style={styles.matchesList} 
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
               contentContainerStyle={styles.matchesListContent}
+              bounces={true}
+              alwaysBounceVertical={true}
             >
               {SAMPLE_MATCHES.map((match) => (
                 <TouchableOpacity
@@ -540,7 +578,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+    <TouchableWithoutFeedback onPress={dismissKeyboard} accessible={false}>
       <View style={styles.container}>
         <LinearGradient
           colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
@@ -550,7 +588,7 @@ export default function ChatScreen() {
             <KeyboardAvoidingView 
               style={styles.chatContainer}
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              keyboardVerticalOffset={0}
+              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
             >
               <View style={styles.chatHeader}>
                 <TouchableOpacity 
@@ -560,7 +598,10 @@ export default function ChatScreen() {
                   <ArrowLeft size={24} color="#00F5FF" />
                 </TouchableOpacity>
                 
-                <View style={styles.chatHeaderInfo}>
+                <TouchableOpacity 
+                  style={styles.chatHeaderInfo}
+                  onPress={handleViewProfile}
+                >
                   <Text style={styles.chatHeaderTitle}>{selectedMatch.name}</Text>
                   <View style={styles.chatHeaderBadges}>
                     <View style={styles.chatLevelBadge}>
@@ -571,20 +612,24 @@ export default function ChatScreen() {
                       <Text style={styles.chatStatusText}>{getStatusText(selectedMatch.status)}</Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
                 
-                <View style={styles.chatHeaderRight}>
+                <TouchableOpacity 
+                  style={styles.chatHeaderRight}
+                  onPress={handleViewProfile}
+                >
                   <Image source={{ uri: selectedMatch.avatar }} style={styles.chatAvatar} />
-                </View>
+                </TouchableOpacity>
               </View>
 
               <ScrollView
                 ref={scrollViewRef}
                 style={styles.messagesContainer}
                 contentContainerStyle={styles.messagesContent}
+                showsVerticalScrollIndicator={true}
+                bounces={true}
+                alwaysBounceVertical={true}
                 onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
               >
                 {messages.map((message) => (
                   <View
@@ -592,7 +637,7 @@ export default function ChatScreen() {
                     style={[
                       styles.messageContainer,
                       message.type === 'game-invite' ? styles.gameInviteContainer : (
-                        message.sender === 'user' ? styles.userMessage : styles.matchMessage
+                        message.sender === "user" ? styles.userMessage : styles.matchMessageBubble
                       ),
                     ]}
                   >
@@ -713,12 +758,6 @@ export default function ChatScreen() {
                     style={styles.gameSelectorGradient}
                   >
                     <View style={styles.gameSelectorHeader}>
-                  returnKeyType="send"
-                  onSubmitEditing={() => {
-                    if (inputText.trim()) {
-                      sendMessage();
-                    }
-                  }}
                       <Text style={styles.gameSelectorTitle}>Choose a Game</Text>
                       <TouchableOpacity onPress={() => setShowGameSelector(false)}>
                         <Text style={styles.gameSelectorClose}>✕</Text>
@@ -740,7 +779,10 @@ export default function ChatScreen() {
                               colors={[`${game.color}20`, `${game.color}10`]}
                               style={styles.gameOptionGradient}
                             >
-                              <game.icon size={Math.min(screenWidth * 0.06, 24)} color={game.color} />
+                              {React.createElement(game.icon, {
+                                size: Math.min(screenWidth * 0.06, 24),
+                                color: game.color
+                              })}
                               <Text style={styles.gameOptionText}>{game.name}</Text>
                             </LinearGradient>
                           </TouchableOpacity>
@@ -768,6 +810,12 @@ export default function ChatScreen() {
                       placeholder="Type a message..."
                       placeholderTextColor="rgba(156, 163, 175, 0.7)"
                       multiline
+                      returnKeyType="send"
+                      onSubmitEditing={() => {
+                        if (inputText.trim()) {
+                          sendMessage();
+                        }
+                      }}
                       onFocus={() => {
                         setTimeout(() => {
                           scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -856,10 +904,12 @@ const styles = StyleSheet.create({
   },
   matchesList: {
     flex: 1,
+    width: '100%',
   },
   matchesListContent: {
     paddingTop: 10,
     paddingBottom: 20,
+    flexGrow: 1,
   },
   matchItem: {
     marginHorizontal: screenWidth * 0.05,
@@ -1047,10 +1097,12 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
+    width: '100%',
   },
   messagesContent: {
-    padding: screenWidth * 0.05,
-    paddingBottom: screenHeight * 0.02,
+    paddingTop: 20,
+    paddingBottom: 20,
+    flexGrow: 1,
   },
   messageContainer: {
     marginBottom: screenHeight * 0.02,
@@ -1066,7 +1118,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 245, 255, 0.3)',
   },
-  matchMessage: {
+  matchMessageBubble: {
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(31, 31, 58, 0.8)',
     borderRadius: 20,
@@ -1078,7 +1130,7 @@ const styles = StyleSheet.create({
   },
   gameInviteContainer: {
     alignSelf: 'center',
-    maxWidth: '95%',
+    width: '95%',
     marginVertical: screenHeight * 0.01,
   },
   gameInviteWrapper: {
@@ -1089,16 +1141,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 8,
-    maxWidth: '100%',
+    width: '100%',
   },
   gameInviteCard: {
     borderWidth: 2,
     borderColor: 'rgba(0, 245, 255, 0.3)',
-    maxWidth: '100%',
+    width: '100%',
   },
   gameInviteContent: {
     padding: screenWidth * 0.05,
-    maxWidth: '100%',
+    width: '100%',
   },
   gameInviteHeader: {
     flexDirection: 'row',
@@ -1188,7 +1240,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-    maxWidth: '100%',
+    width: '100%',
   },
   joinGameButtonGradient: {
     flexDirection: 'row',
@@ -1197,7 +1249,6 @@ const styles = StyleSheet.create({
     paddingVertical: screenHeight * 0.02,
     paddingHorizontal: screenWidth * 0.06,
     gap: 8,
-    flexWrap: 'wrap',
   },
   joinGameButtonText: {
     fontSize: Math.min(screenWidth * 0.04, 16),
@@ -1261,6 +1312,12 @@ const styles = StyleSheet.create({
   gameSelectorContainer: {
     paddingHorizontal: screenWidth * 0.04,
     paddingVertical: screenHeight * 0.015,
+    maxHeight: screenHeight * 0.3,
+    zIndex: 10,
+    position: 'absolute',
+    bottom: screenHeight * 0.08,
+    left: 0,
+    right: 0,
   },
   gameSelectorGradient: {
     borderRadius: 16,
@@ -1285,15 +1342,18 @@ const styles = StyleSheet.create({
   },
   gamesScrollContent: {
     paddingHorizontal: 4,
+    paddingBottom: 8,
   },
   gamesRow: {
     flexDirection: 'row',
     gap: screenWidth * 0.03,
+    flexWrap: 'nowrap',
   },
   gameOption: {
     borderRadius: 12,
     overflow: 'hidden',
     width: screenWidth * 0.3,
+    minWidth: 100,
   },
   gameOptionGradient: {
     padding: screenWidth * 0.03,
@@ -1353,7 +1413,6 @@ const styles = StyleSheet.create({
     padding: screenWidth * 0.03,
   },
   sendButtonActive: {},
-  // Game container styles
   gameContainer: {
     flex: 1,
     padding: screenWidth * 0.05,

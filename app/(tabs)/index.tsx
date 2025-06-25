@@ -1,19 +1,19 @@
-import React, { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  PanResponder,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Crown, MapPin, Gamepad2, Zap, Heart } from 'lucide-react-native';
+import { Crown, Gamepad2, MapPin, Zap } from 'lucide-react-native';
+import { useRef, useState } from 'react';
+import {
+    Animated,
+    Dimensions,
+    Image,
+    Keyboard,
+    PanResponder,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -100,7 +100,7 @@ export default function DiscoverScreen() {
       const { dx, dy } = gesture;
       const threshold = 15;
       // Only allow horizontal swipes, not vertical scrolling
-      return Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy);
+      return Math.abs(dx) > threshold && Math.abs(dx) > Math.abs(dy) * 2;
     },
     onPanResponderGrant: () => {
       Keyboard.dismiss();
@@ -176,6 +176,14 @@ export default function DiscoverScreen() {
     setCurrentImageIndex(0);
     position.setValue({ x: 0, y: 0 });
     rotation.setValue(0);
+    
+    // Reset scroll position when changing profiles
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollTo({ x: 0, y: 0, animated: false });
+    }
+    
+    // Ensure scrolling is enabled for the new profile
+    setScrollEnabled(true);
   };
 
   const currentProfile = SAMPLE_PROFILES[currentIndex];
@@ -198,10 +206,12 @@ export default function DiscoverScreen() {
   });
 
   const handleImageTap = (side: 'left' | 'right') => {
-    if (side === 'left' && currentImageIndex > 0) {
-      setCurrentImageIndex(currentImageIndex - 1);
-    } else if (side === 'right' && currentImageIndex < currentProfile.images.length - 1) {
-      setCurrentImageIndex(currentImageIndex + 1);
+    if (scrollEnabled) {
+      if (side === 'left' && currentImageIndex > 0) {
+        setCurrentImageIndex(currentImageIndex - 1);
+      } else if (side === 'right' && currentImageIndex < currentProfile.images.length - 1) {
+        setCurrentImageIndex(currentImageIndex + 1);
+      }
     }
   };
 
@@ -310,12 +320,19 @@ export default function DiscoverScreen() {
                 <ScrollView 
                   ref={scrollViewRef}
                   style={styles.profileScroll} 
-                  showsVerticalScrollIndicator={false}
+                  showsVerticalScrollIndicator={true}
                   bounces={true}
                   scrollEventThrottle={16}
                   scrollEnabled={scrollEnabled}
                   contentContainerStyle={styles.scrollContent}
                   nestedScrollEnabled={true}
+                  alwaysBounceVertical={true}
+                  onScrollBeginDrag={() => {
+                    // Ensure scroll is enabled when user starts scrolling
+                    if (!scrollEnabled) {
+                      setScrollEnabled(true);
+                    }
+                  }}
                 >
                   {/* Main Image Section */}
                   <View style={styles.imageContainer}>
@@ -329,11 +346,13 @@ export default function DiscoverScreen() {
                       style={[styles.imageNavButton, styles.imageNavLeft]}
                       onPress={() => handleImageTap('left')}
                       activeOpacity={1}
+                      hitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
                     />
                     <TouchableOpacity 
                       style={[styles.imageNavButton, styles.imageNavRight]}
                       onPress={() => handleImageTap('right')}
                       activeOpacity={1}
+                      hitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
                     />
                     
                     {/* Image Indicators */}
@@ -563,10 +582,11 @@ const styles = StyleSheet.create({
   },
   profileScroll: {
     flex: 1,
+    backgroundColor: '#1F1F3A',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 20,
+    paddingBottom: 40,
   },
   imageContainer: {
     position: 'relative',
@@ -580,7 +600,7 @@ const styles = StyleSheet.create({
   imageNavButton: {
     position: 'absolute',
     top: 0,
-    bottom: 0,
+    bottom: '50%',
     width: '50%',
     zIndex: 5,
   },
