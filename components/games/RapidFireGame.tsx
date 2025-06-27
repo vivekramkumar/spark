@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Clock, User, Users, Zap } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
   Animated,
   Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
   TouchableWithoutFeedback,
-  Keyboard,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Zap, Trophy, Clock, CircleCheck as CheckCircle, Circle, User, Users } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -59,115 +59,234 @@ const QUESTIONS: Question[] = [
 interface RapidFireGameProps {
   onGameComplete: (winner: 'player' | 'opponent') => void;
   onBack: () => void;
+  initialState?: {
+    currentPlayer: 'player' | 'opponent';
+    currentQuestion: Question | null;
+    playerScore: number;
+    opponentScore: number;
+    round: number;
+    gamePhase: 'question' | 'answering' | 'viewing' | 'waiting' | 'completed' | 'opponent-turn' | 'results';
+    usedQuestions: string[];
+    playerAnswer: string;
+    opponentAnswer: string;
+    timeLeft: number;
+  };
+  onStateUpdate?: (state: any) => void;
 }
 
-export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameProps) {
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>('player');
-  const [playerAnswers, setPlayerAnswers] = useState<string[]>([]);
-  const [opponentAnswers, setOpponentAnswers] = useState<string[]>([]);
+export default function RapidFireGame({ 
+  onGameComplete, 
+  onBack,
+  initialState,
+  onStateUpdate 
+}: RapidFireGameProps) {
+  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>(
+    initialState?.currentPlayer || 'player'
+  );
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(
+    initialState?.currentQuestion || null
+  );
+  const [playerScore, setPlayerScore] = useState(initialState?.playerScore || 0);
+  const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
+  const [round, setRound] = useState(initialState?.round || 1);
+  const [gamePhase, setGamePhase] = useState<'question' | 'answering' | 'viewing' | 'waiting' | 'completed' | 'opponent-turn' | 'results'>(
+    initialState?.gamePhase || 'question'
+  );
+  const [playerAnswer, setPlayerAnswer] = useState(initialState?.playerAnswer || '');
+  const [opponentAnswer, setOpponentAnswer] = useState(initialState?.opponentAnswer || '');
+  const [usedQuestions, setUsedQuestions] = useState<string[]>(initialState?.usedQuestions || []);
+  const [timeLeft, setTimeLeft] = useState(initialState?.timeLeft || 15);
+  const [isTimerActive, setIsTimerActive] = useState(false);
   const [gameResults, setGameResults] = useState<GameResult[]>([]);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [gamePhase, setGamePhase] = useState<'question' | 'opponent-turn' | 'results' | 'completed'>('question');
-  const [timeLeft, setTimeLeft] = useState(10);
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [usedQuestions, setUsedQuestions] = useState<Question[]>([]);
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
   const [gameStarted, setGameStarted] = useState(false);
-  const fadeAnim = new Animated.Value(1); // Start with 1 so first question is visible
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   const maxQuestions = 10;
 
+  // Initialize game
   useEffect(() => {
-    // Generate first question and make it visible immediately
-    generateNewQuestion();
+    if (!initialState) {
+      generateNewQuestion();
+    }
+    setGameStarted(true);
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
   }, []);
 
+  // Update parent component with current state when it changes
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isTimerActive && timeLeft > 0 && gameStarted) {
-      interval = setInterval(() => {
-        setTimeLeft(time => time - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && currentPlayer === 'player' && gamePhase === 'question' && !isProcessingTurn && gameStarted) {
-      handleSkip();
+    if (onStateUpdate) {
+      onStateUpdate({
+        currentPlayer,
+        currentQuestion,
+        playerScore,
+        opponentScore,
+        round,
+        gamePhase,
+        usedQuestions,
+        playerAnswer,
+        opponentAnswer,
+        timeLeft
+      });
     }
-    return () => clearInterval(interval);
-  }, [isTimerActive, timeLeft, gamePhase, isProcessingTurn, currentPlayer, gameStarted]);
+  }, [
+    currentPlayer,
+    currentQuestion,
+    playerScore,
+    opponentScore,
+    round,
+    gamePhase,
+    usedQuestions,
+    playerAnswer,
+    opponentAnswer,
+    timeLeft
+  ]);
 
-  // Handle opponent's turn automatically
+  // Timer effect
   useEffect(() => {
-    if (currentPlayer === 'opponent' && gamePhase === 'question' && !isProcessingTurn && gameStarted) {
-      setIsProcessingTurn(true);
-      setGamePhase('opponent-turn');
-      setIsTimerActive(false);
-      
-      // Simulate opponent answering
-      setTimeout(() => {
-        const opponentResponses = [
-          "Coffee definitely!", "I'm a night owl", "Mountains for sure", "Dogs all the way",
-          "Blue is my favorite", "Pizza always wins", "Netflix and chill", "Japan would be amazing",
-          "Sweet tooth here", "Heights scare me", "Summer vibes", "Comedy movies",
-          "Total procrastinator", "I prefer texting", "I can juggle!", "Bit of both",
-          "Don't Stop Believin'", "Superhero for sure", "Loud chewing", "Adventure seeker"
-        ];
-        const randomResponse = opponentResponses[Math.floor(Math.random() * opponentResponses.length)];
-        setOpponentAnswers(prev => [...prev, randomResponse]);
-        
-        // Add to game results
-        if (currentQuestion) {
-          setGameResults(prev => [...prev, {
-            question: currentQuestion.question,
-            playerAnswer: playerAnswers[playerAnswers.length - 1] || "No answer",
-            opponentAnswer: randomResponse,
-            category: currentQuestion.category
-          }]);
-        }
-        
-        setTimeout(() => {
-          nextQuestion();
-        }, 2000);
-      }, 1500);
+    if (isTimerActive && timeLeft > 0 && gameStarted) {
+      timerRef.current = setInterval(() => {
+        setTimeLeft(time => {
+          if (time <= 1) {
+            setIsTimerActive(false);
+            if (timerRef.current) clearInterval(timerRef.current);
+            if (currentPlayer === 'player' && gamePhase === 'question' && !isProcessingTurn) {
+              // Schedule state updates for next tick to avoid state update during render
+              setTimeout(() => {
+                setIsProcessingTurn(true);
+                setPlayerAnswer("Time's up!");
+                setIsTimerActive(false);
+                setCurrentPlayer('opponent');
+                setGamePhase('question');
+                generateNewQuestion();
+              }, 0);
+            }
+            return 0;
+          }
+          return time - 1;
+        });
+      }, 1000);
     }
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isTimerActive, gameStarted]);
+
+  // Handle opponent's turn
+  useEffect(() => {
+    let turnTimeout: ReturnType<typeof setTimeout>;
+    let answerTimeout: ReturnType<typeof setTimeout>;
+
+    const handleOpponentTurn = async () => {
+      if (currentPlayer === 'opponent' && gamePhase === 'question' && !isProcessingTurn && gameStarted) {
+        setIsProcessingTurn(true);
+        setGamePhase('opponent-turn');
+        setIsTimerActive(false);
+        
+        // Simulate opponent answering
+        turnTimeout = setTimeout(() => {
+          const opponentResponses = [
+            "Coffee definitely!", "I'm a night owl", "Mountains for sure", "Dogs all the way",
+            "Blue is my favorite", "Pizza always wins", "Netflix and chill", "Japan would be amazing",
+            "Sweet tooth here", "Heights scare me", "Summer vibes", "Comedy movies",
+            "Total procrastinator", "I prefer texting", "I can juggle!", "Bit of both",
+            "Don't Stop Believin'", "Superhero for sure", "Loud chewing", "Adventure seeker"
+          ];
+          const randomResponse = opponentResponses[Math.floor(Math.random() * opponentResponses.length)];
+          setOpponentAnswer(randomResponse);
+          
+          // Add to game results
+          if (currentQuestion) {
+            setGameResults(prev => [...prev, {
+              question: currentQuestion.question,
+              playerAnswer: playerAnswer || "No answer",
+              opponentAnswer: randomResponse,
+              category: currentQuestion.category
+            }]);
+          }
+          
+          answerTimeout = setTimeout(() => {
+            nextQuestion();
+          }, 2000);
+        }, 1500);
+      }
+    };
+
+    handleOpponentTurn();
+
+    return () => {
+      if (turnTimeout) clearTimeout(turnTimeout);
+      if (answerTimeout) clearTimeout(answerTimeout);
+    };
   }, [currentPlayer, gamePhase, isProcessingTurn, gameStarted]);
 
+  const nextQuestion = () => {
+    // Check if game should end
+    if (questionIndex >= maxQuestions - 1) {
+      setGamePhase('completed');
+      onGameComplete(playerScore > opponentScore ? 'player' : 'opponent');
+      return;
+    }
+
+    // Switch to next player
+    const nextPlayer = currentPlayer === 'player' ? 'opponent' : 'player';
+    
+    // Increment question index when completing a full turn (both players have played)
+    if (currentPlayer === 'opponent') {
+      setQuestionIndex(prev => prev + 1);
+    }
+
+    // Reset state for next question
+    setCurrentPlayer(nextPlayer);
+    setGamePhase('question');
+    setIsProcessingTurn(false);
+    setPlayerAnswer('');
+    setOpponentAnswer('');
+    setTimeLeft(15);
+    setIsTimerActive(false);
+    
+    // Generate new question
+    generateNewQuestion();
+
+    // Animate question transition
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true
+    }).start();
+  };
+
   const generateNewQuestion = () => {
-    const availableQuestions = QUESTIONS.filter(q => !usedQuestions.some(used => used.id === q.id));
-    let selectedQuestion;
+    const availableQuestions = QUESTIONS.filter(q => !usedQuestions.includes(q.id));
+    let selectedQuestion: Question;
     
     if (availableQuestions.length === 0) {
       setUsedQuestions([]);
       selectedQuestion = QUESTIONS[Math.floor(Math.random() * QUESTIONS.length)];
     } else {
       selectedQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-      setUsedQuestions(prev => [...prev, selectedQuestion]);
+      setUsedQuestions(prev => [...prev, selectedQuestion.id]);
     }
     
-    // Animate question change
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    setCurrentQuestion(selectedQuestion);
+    fadeAnim.setValue(0);
     
-    // Set question after fade out starts
-    setTimeout(() => {
-      setCurrentQuestion(selectedQuestion);
-    }, 150);
-    
-    // Only start timer for player turns and after game has started
-    if (currentPlayer === 'player' && gameStarted) {
-      setTimeLeft(10);
-      setIsTimerActive(true);
-    }
-    setIsProcessingTurn(false);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
   };
 
   const startPlayerTurn = () => {
@@ -181,7 +300,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
     Keyboard.dismiss();
     
     setIsProcessingTurn(true);
-    setPlayerAnswers(prev => [...prev, answer]);
+    setPlayerAnswer(answer);
     setIsTimerActive(false);
     
     // Switch to opponent's turn
@@ -195,25 +314,13 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
     Keyboard.dismiss();
     
     setIsProcessingTurn(true);
-    setPlayerAnswers(prev => [...prev, "Skipped"]);
+    setPlayerAnswer("Skipped");
     setIsTimerActive(false);
     
     // Switch to opponent's turn
     setCurrentPlayer('opponent');
     setGamePhase('question');
     generateNewQuestion();
-  };
-
-  const nextQuestion = () => {
-    if (questionIndex + 1 >= maxQuestions) {
-      setGamePhase('results');
-      return;
-    } else {
-      setQuestionIndex(prev => prev + 1);
-      setCurrentPlayer('player'); // Switch back to player
-      setGamePhase('question');
-      generateNewQuestion();
-    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -400,7 +507,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
           {currentQuestion && currentPlayer === 'player' && gamePhase === 'question' && (
             <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
               <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentQuestion.category) }]}>
-                <Text style={styles.categoryText}>{currentQuestion.category.toUpperCase()}</Text>
+                <Text style={styles.categoryText}>{currentQuestion.question.toUpperCase()}</Text>
               </View>
 
               <ScrollView style={styles.questionScroll}>
@@ -430,7 +537,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
                     {/* Always show A and B options for all questions */}
                     <TouchableOpacity
                       style={styles.quickAnswerButton}
-                      onPress={() => handleAnswer(currentQuestion.optionA || "Option A")}
+                      onPress={() => handleAnswer(currentQuestion.question)}
                       disabled={isProcessingTurn}
                     >
                       <LinearGradient
@@ -439,14 +546,14 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
                       >
                         <Text style={styles.quickAnswerText}>A</Text>
                         <Text style={styles.quickAnswerSubtext}>
-                          {currentQuestion.optionA || "First choice"}
+                          {currentQuestion.question}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
                     
                     <TouchableOpacity
                       style={styles.quickAnswerButton}
-                      onPress={() => handleAnswer(currentQuestion.optionB || "Option B")}
+                      onPress={() => handleAnswer(currentQuestion.question)}
                       disabled={isProcessingTurn}
                     >
                       <LinearGradient
@@ -455,7 +562,7 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
                       >
                         <Text style={styles.quickAnswerText}>B</Text>
                         <Text style={styles.quickAnswerSubtext}>
-                          {currentQuestion.optionB || "Second choice"}
+                          {currentQuestion.question}
                         </Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -488,18 +595,18 @@ export default function RapidFireGame({ onGameComplete, onBack }: RapidFireGameP
           <Text style={styles.answersTitle}>Answers So Far:</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={styles.answersRow}>
-              {playerAnswers.map((answer, index) => (
-                <View key={`player-${index}`} style={[styles.answerBubble, styles.playerAnswerBubble]}>
+              {playerAnswer && (
+                <View style={[styles.answerBubble, styles.playerAnswerBubble]}>
                   <Text style={styles.answerBubbleLabel}>You:</Text>
-                  <Text style={styles.answerBubbleText}>{answer}</Text>
+                  <Text style={styles.answerBubbleText}>{playerAnswer}</Text>
                 </View>
-              ))}
-              {opponentAnswers.map((answer, index) => (
-                <View key={`opponent-${index}`} style={[styles.answerBubble, styles.opponentAnswerBubble]}>
+              )}
+              {opponentAnswer && (
+                <View style={[styles.answerBubble, styles.opponentAnswerBubble]}>
                   <Text style={styles.answerBubbleLabel}>Luna:</Text>
-                  <Text style={styles.answerBubbleText}>{answer}</Text>
+                  <Text style={styles.answerBubbleText}>{opponentAnswer}</Text>
                 </View>
-              ))}
+              )}
             </View>
           </ScrollView>
         </View>

@@ -1,22 +1,23 @@
+import GameContainer from '@/components/games/GameContainer';
+import UserProfileView from '@/components/ui/UserProfileView';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useFadeIn, useSlideUp } from '@/hooks/useAnimations';
+import { supabase } from '@/lib/supabase';
+import { Database } from '@/types/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft,
-  Clock,
   Crown,
   Eye,
   Flame,
   Gamepad2,
-  Heart,
-  Play,
-  Plus,
   Send,
-  Smile,
-  Target,
-  Users,
-  Zap
+  Zap,
 } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
+  Animated,
   Dimensions,
   Image,
   Keyboard,
@@ -28,363 +29,651 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-// Import game components
-import EmojiStoryGame from '@/components/games/EmojiStoryGame';
-import NeverHaveIEverGame from '@/components/games/NeverHaveIEverGame';
-import RapidFireGame from '@/components/games/RapidFireGame';
-import TruthOrDareGame from '@/components/games/TruthOrDareGame';
-import WouldYouRatherGame from '@/components/games/WouldYouRatherGame';
-import UserProfileView from '@/components/UserProfileView';
-
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'match';
-  timestamp: Date;
-  type: 'text' | 'game-invite' | 'system';
-  gameType?: string;
-  gameName?: string;
-  gameStatus?: 'pending' | 'accepted' | 'declined' | 'active';
-}
+// Helper functions
+const scale = (size: number) => {
+  return Math.round(screenWidth * size / 375);
+};
+
+const verticalScale = (size: number) => {
+  return Math.round(screenHeight * size / 812);
+};
+
+// Types
+type GameType = 'truth-or-dare' | 'never-have-i-ever' | 'would-you-rather' | 'rapid-fire' | 'emoji-story';
+type Match = Database['public']['Tables']['matches']['Row'];
+type Message = Database['public']['Tables']['messages']['Row'];
+type Profile = Database['public']['Tables']['profiles']['Row'];
 
 interface ChatMatch {
   id: string;
-  name: string;
-  avatar: string;
-  lastMessage: string;
-  timestamp: Date;
-  unread: number;
-  level: number;
-  streak: number;
-  status: 'online' | 'offline' | 'in-game';
+  status: string;
+  created_at: string;
+  updated_at: string;
+  last_message_time: string;
+  last_message: string;
+  game_streak: number;
+  profile: Profile;
+  unreadCount: number;
 }
 
-const SAMPLE_MATCHES: ChatMatch[] = [
-  {
-    id: '1',
-    name: 'Luna',
-    avatar: 'https://images.pexels.com/photos/1586973/pexels-photo-1586973.jpeg?auto=compress&cs=tinysrgb&w=800',
-    lastMessage: 'Ready for another UNO battle? 🎮',
-    timestamp: new Date(Date.now() - 10 * 60 * 1000),
-    unread: 2,
-    level: 12,
-    streak: 5,
-    status: 'online',
-  },
-  {
-    id: '2',
-    name: 'Emma',
-    avatar: 'https://images.pexels.com/photos/1036623/pexels-photo-1036623.jpeg?auto=compress&cs=tinysrgb&w=800',
-    lastMessage: 'That Truth or Dare game was intense! 😅',
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    unread: 0,
-    level: 18,
-    streak: 8,
-    status: 'in-game',
-  },
-  {
-    id: '3',
-    name: 'Sophia',
-    avatar: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=800',
-    lastMessage: 'Hey! How was your day? ✨',
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000),
-    unread: 1,
-    level: 25,
-    streak: 12,
-    status: 'offline',
-  },
-];
-
 const AVAILABLE_GAMES = [
-  { 
-    id: 'uno', 
-    name: 'UNO Battle', 
-    icon: Gamepad2, 
-    color: '#FF6B6B', 
-    description: 'Classic card game battle',
-    players: '2 players',
-    duration: '5-10 min'
-  },
-  { 
-    id: 'truth-or-dare', 
-    name: 'Truth or Dare', 
-    icon: Eye, 
-    color: '#9D4EDD', 
+  {
+    id: 'truth-or-dare',
+    name: 'Truth or Dare',
+    icon: Eye,
+    color: '#9D4EDD',
     description: 'Reveal secrets or take dares',
-    players: '2 players',
-    duration: '10-15 min'
-  },
-  { 
-    id: 'never-have-i-ever', 
-    name: 'Never Have I Ever', 
-    icon: Flame, 
-    color: '#F72585', 
-    description: 'Share your experiences',
-    players: '2 players',
-    duration: '8-12 min'
-  },
-  { 
-    id: 'would-you-rather', 
-    name: 'Would You Rather', 
-    icon: Target, 
-    color: '#06FFA5', 
-    description: 'Impossible choices',
-    players: '2 players',
-    duration: '5-8 min'
-  },
-  { 
-    id: 'rapid-fire', 
-    name: 'Rapid Fire Q&A', 
-    icon: Zap, 
-    color: '#FFD60A', 
-    description: 'Quick questions, instant chemistry',
-    players: '2 players',
-    duration: '3-5 min'
-  },
-  { 
-    id: 'emoji-story', 
-    name: 'Emoji Story', 
-    icon: Heart, 
-    color: '#FF9F1C', 
-    description: 'Create stories with emojis',
-    players: '2 players',
-    duration: '6-10 min'
   },
 ];
 
-const SAMPLE_MESSAGES: Message[] = [
-  {
-    id: '1',
-    text: "Hey! Great match earlier! ⚡",
-    sender: 'match',
-    timestamp: new Date(Date.now() - 30 * 60 * 1000),
-    type: 'text',
-  },
-  {
-    id: '2',
-    text: "Thanks! You're really good at UNO 😄",
-    sender: 'user',
-    timestamp: new Date(Date.now() - 25 * 60 * 1000),
-    type: 'text',
-  },
-  {
-    id: '3',
-    text: "Want to play another game? I'm thinking Truth or Dare this time 🔥",
-    sender: 'match',
-    timestamp: new Date(Date.now() - 20 * 60 * 1000),
-    type: 'text',
-  },
-  {
-    id: '4',
-    text: "Let's play Truth or Dare",
-    sender: 'match',
-    timestamp: new Date(Date.now() - 15 * 60 * 1000),
-    type: 'game-invite',
-    gameType: 'truth-or-dare',
-    gameName: 'Truth or Dare',
-    gameStatus: 'pending',
-  },
-];
+// Helper functions
+const formatTime = (date: string | Date) => {
+  if (typeof date === 'string') {
+    date = new Date(date);
+  }
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+
+const dismissKeyboard = () => {
+  Keyboard.dismiss();
+};
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'online': return '#06FFA5';
+    case 'offline': return '#6B7280';
+    case 'away': return '#FFD60A';
+    default: return '#6B7280';
+  }
+};
+
+const getStatusText = (status: string) => {
+  switch (status) {
+    case 'online': return 'Online';
+    case 'offline': return 'Offline';
+    case 'away': return 'Away';
+    default: return 'Unknown';
+  }
+};
 
 export default function ChatScreen() {
+  const { theme } = useTheme();
+  const [matches, setMatches] = useState<ChatMatch[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<ChatMatch | null>(null);
-  const [messages, setMessages] = useState<Message[]>(SAMPLE_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [showGameSelector, setShowGameSelector] = useState(false);
-  const [currentGame, setCurrentGame] = useState<string | null>(null);
-  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [viewingProfile, setViewingProfile] = useState(false);
+  const [currentGame, setCurrentGame] = useState<GameType | null>(null);
+  const [currentGameState, setCurrentGameState] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const scrollViewRef = useRef<ScrollView>(null);
+  
+  // Animation values
+  const fadeAnim = useFadeIn(500);
+  const slideAnim = useSlideUp(500);
+  const messageInputAnim = useRef(new Animated.Value(0)).current;
 
+  // Fetch matches
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener(
-      'keyboardDidShow',
-      (e) => {
-        setKeyboardHeight(e.endCoordinates.height);
+    const fetchMatches = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get user's profile
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!userProfile) return;
+
+        // Get all matches for the user
+        const { data: matchesData, error: matchesError } = await supabase
+          .from('matches')
+          .select(`
+            *,
+            user1:user1_id(id, user_id, name, age, bio, photos, level),
+            user2:user2_id(id, user_id, name, age, bio, photos, level)
+          `)
+          .or(`user1_id.eq.${userProfile.id},user2_id.eq.${userProfile.id}`)
+          .eq('status', 'matched')
+          .order('last_message_time', { ascending: false });
+
+        if (matchesError) throw matchesError;
+
+        // Transform matches data
+        const transformedMatches: ChatMatch[] = matchesData.map(match => {
+          const isUser1 = match.user1.id === userProfile.id;
+          const otherUser = isUser1 ? match.user2 : match.user1;
+          
+          return {
+            id: match.id,
+            status: match.status,
+            created_at: match.created_at,
+            updated_at: match.updated_at,
+            last_message_time: match.last_message_time,
+            last_message: match.last_message,
+            game_streak: match.game_streak,
+            profile: otherUser,
+            unreadCount: isUser1 ? match.user1_unread_count : match.user2_unread_count
+          };
+        });
+
+        setMatches(transformedMatches);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching matches:', error);
+        setIsLoading(false);
       }
-    );
-    const keyboardDidHideListener = Keyboard.addListener(
-      'keyboardDidHide',
-      () => {
-        setKeyboardHeight(0);
-      }
-    );
+    };
+
+    fetchMatches();
+
+    // Subscribe to match updates
+    const matchesSubscription = supabase
+      .channel('matches_channel')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'matches'
+      }, () => {
+        fetchMatches();
+      })
+      .subscribe();
 
     return () => {
-      keyboardDidHideListener?.remove();
-      keyboardDidShowListener?.remove();
+      matchesSubscription.unsubscribe();
     };
   }, []);
 
-  const dismissKeyboard = () => {
-    Keyboard.dismiss();
-    if (showGameSelector) {
-      setShowGameSelector(false);
+  // Fetch messages when a match is selected
+  useEffect(() => {
+    if (!selectedMatch) {
+      setMessages([]);
+      return;
+    }
+
+    const fetchMessages = async () => {
+      try {
+        const { data: messagesData, error: messagesError } = await supabase
+          .from('messages')
+          .select('*')
+          .eq('match_id', selectedMatch.id)
+          .order('created_at', { ascending: true });
+
+        if (messagesError) throw messagesError;
+        setMessages(messagesData || []);
+
+        // Reset unread count
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!userProfile) return;
+
+        // Update unread count
+        await supabase
+          .from('matches')
+          .update({
+            user1_unread_count: userProfile.id === selectedMatch.profile.id ? 0 : undefined,
+            user2_unread_count: userProfile.id !== selectedMatch.profile.id ? 0 : undefined
+          })
+          .eq('id', selectedMatch.id);
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+      }
+    };
+
+    fetchMessages();
+
+    // Subscribe to message updates
+    const messagesSubscription = supabase
+      .channel('messages_channel')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `match_id=eq.${selectedMatch.id}`
+      }, (payload) => {
+        setMessages(current => [...current, payload.new as Message]);
+      })
+      .subscribe();
+
+    return () => {
+      messagesSubscription.unsubscribe();
+    };
+  }, [selectedMatch]);
+
+  // Early return if theme is not initialized
+  if (!theme) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0F0F23' }}>
+        <ActivityIndicator size="large" color="#00C2FF" />
+      </View>
+    );
+  }
+
+  // Create styles with theme values
+  const styles = StyleSheet.create({
+    loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#0F0F23',
+    },
+    container: {
+      flex: 1,
+    },
+    backgroundGradient: {
+      flex: 1,
+    },
+    safeArea: {
+      flex: 1,
+    },
+    header: {
+      paddingHorizontal: scale(20),
+      paddingVertical: verticalScale(10),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.border.default,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerTitle: {
+      fontSize: scale(18),
+      fontWeight: 'bold',
+      color: theme.colors.text.primary,
+      marginLeft: scale(10),
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerButton: {
+      marginLeft: scale(15),
+    },
+    headerBadge: {
+      backgroundColor: theme.colors.background.card,
+      paddingHorizontal: scale(10),
+      paddingVertical: verticalScale(5),
+      borderRadius: scale(15),
+      marginLeft: scale(10),
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    headerBadgeText: {
+      color: theme.colors.text.primary,
+      fontSize: scale(12),
+      marginLeft: scale(5),
+    },
+    headerSubtitle: {
+      color: theme.colors.text.secondary,
+      fontSize: scale(14),
+      marginTop: verticalScale(5),
+    },
+    matchesList: {
+      flex: 1,
+      paddingHorizontal: scale(20),
+    },
+    matchesListContent: {
+      paddingVertical: verticalScale(10),
+    },
+    matchItem: {
+      marginBottom: verticalScale(10),
+      borderRadius: scale(15),
+      overflow: 'hidden',
+    },
+    matchItemGradient: {
+      padding: scale(15),
+    },
+    matchAvatarContainer: {
+      position: 'relative',
+      marginRight: scale(10),
+    },
+    matchAvatar: {
+      width: scale(50),
+      height: scale(50),
+      borderRadius: scale(25),
+    },
+    matchInfo: {
+      flex: 1,
+    },
+    matchHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: verticalScale(5),
+    },
+    matchNameSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    matchName: {
+      fontSize: scale(16),
+      fontWeight: 'bold',
+      color: theme.colors.text.primary,
+      marginRight: scale(10),
+    },
+    matchBadges: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    levelBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.background.card,
+      paddingHorizontal: scale(8),
+      paddingVertical: verticalScale(4),
+      borderRadius: scale(10),
+      marginRight: scale(5),
+    },
+    levelText: {
+      color: theme.colors.text.primary,
+      fontSize: scale(12),
+      marginLeft: scale(3),
+    },
+    statusBadge: {
+      paddingHorizontal: scale(8),
+      paddingVertical: verticalScale(4),
+      borderRadius: scale(10),
+    },
+    statusText: {
+      color: theme.colors.text.primary,
+      fontSize: scale(12),
+    },
+    matchTime: {
+      color: theme.colors.text.secondary,
+      fontSize: scale(12),
+    },
+    matchFooter: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    matchMessage: {
+      color: theme.colors.text.secondary,
+      fontSize: scale(14),
+      flex: 1,
+      marginRight: scale(10),
+    },
+    unreadBadge: {
+      backgroundColor: theme.colors.button.primary.background[0],
+      width: scale(20),
+      height: scale(20),
+      borderRadius: scale(10),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    unreadText: {
+      color: theme.colors.text.primary,
+      fontSize: scale(12),
+      fontWeight: 'bold',
+    },
+    streakRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: verticalScale(5),
+    },
+    streakText: {
+      color: theme.colors.text.secondary,
+      fontSize: scale(12),
+      marginLeft: scale(5),
+    },
+    messagesList: {
+      flex: 1,
+      paddingHorizontal: scale(20),
+    },
+    messagesListContent: {
+      paddingVertical: verticalScale(10),
+    },
+    messageContainer: {
+      marginBottom: verticalScale(10),
+      maxWidth: '80%',
+    },
+    messageUser: {
+      alignSelf: 'flex-end',
+    },
+    messageMatch: {
+      alignSelf: 'flex-start',
+    },
+    messageBubble: {
+      padding: scale(15),
+      borderRadius: scale(20),
+    },
+    messageBubbleUser: {
+      backgroundColor: theme.colors.button.primary.background[0],
+    },
+    messageBubbleMatch: {
+      backgroundColor: theme.colors.background.card,
+    },
+    messageText: {
+      color: theme.colors.text.primary,
+      fontSize: scale(14),
+    },
+    messageTime: {
+      color: theme.colors.text.secondary,
+      fontSize: scale(10),
+      marginTop: verticalScale(5),
+      alignSelf: 'flex-end',
+    },
+    inputContainer: {
+      paddingHorizontal: scale(20),
+      paddingVertical: verticalScale(10),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border.default,
+      backgroundColor: theme.colors.background.primary,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    input: {
+      flex: 1,
+      backgroundColor: theme.colors.background.card,
+      borderRadius: scale(25),
+      paddingHorizontal: scale(20),
+      paddingVertical: verticalScale(10),
+      color: theme.colors.text.primary,
+      marginRight: scale(10),
+    },
+    sendButton: {
+      width: scale(40),
+      height: scale(40),
+      borderRadius: scale(20),
+      backgroundColor: theme.colors.button.primary.background[0],
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    gameButton: {
+      width: scale(40),
+      height: scale(40),
+      borderRadius: scale(20),
+      backgroundColor: theme.colors.background.card,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: scale(10),
+    },
+    gameSelectorContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: theme.colors.background.primary,
+      borderTopLeftRadius: scale(20),
+      borderTopRightRadius: scale(20),
+      padding: scale(20),
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.border.default,
+    },
+    gameOption: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: scale(15),
+      backgroundColor: theme.colors.background.card,
+      borderRadius: scale(15),
+      marginBottom: verticalScale(10),
+    },
+    gameOptionIcon: {
+      width: scale(40),
+      height: scale(40),
+      borderRadius: scale(20),
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: scale(15),
+    },
+    gameOptionInfo: {
+      flex: 1,
+    },
+    gameOptionTitle: {
+      fontSize: scale(16),
+      fontWeight: 'bold',
+      color: theme.colors.text.primary,
+      marginBottom: verticalScale(5),
+    },
+    gameOptionDescription: {
+      fontSize: scale(12),
+      color: theme.colors.text.secondary,
+    },
+  });
+
+  const sendMessage = async () => {
+    if (!inputText.trim() || !selectedMatch) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!userProfile) return;
+
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          match_id: selectedMatch.id,
+          sender_id: userProfile.id,
+          type: 'text',
+          content: inputText.trim(),
+        });
+
+      if (error) throw error;
+
+      setInputText('');
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    } catch (error) {
+      console.error('Error sending message:', error);
     }
   };
 
-  const sendMessage = () => {
-    if (inputText.trim() === '') return;
+  const sendGameInvite = async (gameId: string, gameName: string) => {
+    if (!selectedMatch) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      sender: 'user',
-      timestamp: new Date(),
-      type: 'text',
-    };
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    setMessages(prev => [...prev, newMessage]);
-    setInputText('');
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
 
-    setTimeout(() => {
-      const responses = [
-        "That's awesome! 🔥",
-        "I totally agree! ⚡",
-        "Interesting... tell me more! 🤔",
-        "Same here! What's next? 🎮",
-        "You're so funny! 😄",
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      const responseMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: randomResponse,
-        sender: 'match',
-        timestamp: new Date(),
-        type: 'text',
-      };
-      
-      setMessages(prev => [...prev, responseMessage]);
-    }, 1500);
+      if (!userProfile) return;
+
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          match_id: selectedMatch.id,
+          sender_id: userProfile.id,
+          type: 'game-invite',
+          content: `Let's play ${gameName}!`,
+          game_type: gameId,
+          game_status: 'pending',
+        });
+
+      if (error) throw error;
+
+      setShowGameSelector(false);
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    } catch (error) {
+      console.error('Error sending game invite:', error);
+    }
   };
 
-  const sendGameInvite = (gameId: string, gameName: string) => {
-    const gameInvite: Message = {
-      id: Date.now().toString(),
-      text: `Let's play ${gameName}`,
-      sender: 'user',
-      timestamp: new Date(),
-      type: 'game-invite',
-      gameType: gameId,
-      gameName: gameName,
-      gameStatus: 'pending',
-    };
-
-    setMessages(prev => [...prev, gameInvite]);
-    setShowGameSelector(false);
-
-    // Simulate acceptance
-    setTimeout(() => {
-      const acceptMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: `Game accepted! Let's play ${gameName}! 🎮`,
-        sender: 'match',
-        timestamp: new Date(),
-        type: 'text',
-      };
-      
-      setMessages(prev => [...prev, acceptMessage]);
-    }, 2000);
-  };
-
-  const handleJoinGame = (gameType: string, gameName: string) => {
-    // Update the game status to active
-    setMessages(prev => prev.map(msg => 
-      msg.type === 'game-invite' && msg.gameType === gameType 
-        ? { ...msg, gameStatus: 'active' as const }
-        : msg
-    ));
-
-    // Launch the actual game
+  const handleJoinGame = (gameType: GameType, gameName: string) => {
     setCurrentGame(gameType);
-  };
-
-  const handleGameComplete = (winner: 'player' | 'opponent') => {
-    // Return to chat
-    setCurrentGame(null);
-    
-    // Add completion message
-    const completionMessage: Message = {
-      id: Date.now().toString(),
-      text: `🎉 Game completed! ${winner === 'player' ? 'You won!' : `${selectedMatch?.name} won!`} Great game! 🎮`,
-      sender: 'match',
-      timestamp: new Date(),
-      type: 'text',
-    };
-
-    setMessages(prev => [...prev, completionMessage]);
+    setShowGameSelector(false);
   };
 
   const handleBackFromGame = () => {
     setCurrentGame(null);
+    setCurrentGameState(null);
   };
 
-  const formatTime = (date: Date): string => {
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) {
-      const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-      return `${diffInMinutes}m ago`;
-    } else if (diffInHours < 24) {
-      return `${diffInHours}h ago`;
-    } else {
-      return date.toLocaleDateString();
+  const handleGameComplete = async (winner: 'player' | 'opponent') => {
+    if (!selectedMatch) return;
+
+    try {
+      // Update game streak
+      await supabase
+        .from('matches')
+        .update({
+          game_streak: selectedMatch.game_streak + 1
+        })
+        .eq('id', selectedMatch.id);
+
+      setCurrentGame(null);
+      setCurrentGameState(null);
+    } catch (error) {
+      console.error('Error updating game streak:', error);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'online': return '#06FFA5';
-      case 'in-game': return '#FFD60A';
-      case 'offline': return '#6B7280';
-      default: return '#6B7280';
-    }
+  const handleGameStateUpdate = (newState: any) => {
+    setCurrentGameState(newState);
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'online': return 'Online';
-      case 'in-game': return 'In Game';
-      case 'offline': return 'Offline';
-      default: return 'Unknown';
-    }
-  };
-
-  const getGameData = (gameType: string) => {
-    return AVAILABLE_GAMES.find(g => g.id === gameType) || AVAILABLE_GAMES[0];
-  };
-  
-  // Function to view the user's profile
   const handleViewProfile = () => {
-    if (selectedMatch) {
-      setViewingProfile(true);
-    }
+    setViewingProfile(true);
   };
 
   // Render profile view
   if (viewingProfile && selectedMatch) {
-    // Convert the ChatMatch to a profile format compatible with UserProfileView
     const userProfile = {
-      id: selectedMatch.id,
-      name: selectedMatch.name,
-      age: 25, // Assuming age is not in the ChatMatch interface
-      bio: "Gaming enthusiast and coffee lover. Let's battle it out in some games! 🎮☕",
-      images: [selectedMatch.avatar, selectedMatch.avatar], // Using avatar as placeholder
-      level: selectedMatch.level,
-      streak: selectedMatch.streak,
+      id: selectedMatch.profile.id,
+      name: selectedMatch.profile.name,
+      age: selectedMatch.profile.age,
+      bio: selectedMatch.profile.bio,
+      images: selectedMatch.profile.photos,
+      level: selectedMatch.profile.level,
+      streak: selectedMatch.game_streak,
       tags: ["Gamer", "Competitive", "Strategic"],
       interests: ["Gaming", "Coffee", "Music", "Movies"],
-      gamesWon: 42, // Placeholder
-      location: "San Francisco, CA", // Placeholder
-      distance: 5, // Placeholder in km
+      gamesWon: 42,
+      location: "San Francisco, CA",
+      distance: 5,
     };
 
     return (
@@ -398,98 +687,27 @@ export default function ChatScreen() {
 
   // Render game screens
   if (currentGame && selectedMatch) {
-    switch (currentGame) {
-      case 'truth-or-dare':
-        return (
-          <TruthOrDareGame
-            onGameComplete={handleGameComplete}
-            onBack={handleBackFromGame}
-          />
-        );
-      case 'never-have-i-ever':
-        return (
-          <NeverHaveIEverGame
-            onGameComplete={handleGameComplete}
-            onBack={handleBackFromGame}
-          />
-        );
-      case 'would-you-rather':
-        return (
-          <WouldYouRatherGame
-            onGameComplete={handleGameComplete}
-            onBack={handleBackFromGame}
-          />
-        );
-      case 'rapid-fire':
-        return (
-          <RapidFireGame
-            onGameComplete={handleGameComplete}
-            onBack={handleBackFromGame}
-          />
-        );
-      case 'emoji-story':
-        return (
-          <EmojiStoryGame
-            onGameComplete={handleGameComplete}
-            onBack={handleBackFromGame}
-          />
-        );
-      case 'uno':
-        // For UNO, we'll show a simple placeholder since the full UNO game is complex
-        return (
-          <View style={styles.container}>
-            <LinearGradient
-              colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-              style={styles.backgroundGradient}
-            >
-              <SafeAreaView style={styles.safeArea}>
-                <View style={styles.gameContainer}>
-                  <View style={styles.gameHeader}>
-                    <TouchableOpacity 
-                      style={styles.backButton}
-                      onPress={handleBackFromGame}
-                    >
-                      <ArrowLeft size={24} color="#00F5FF" />
-                    </TouchableOpacity>
-                    <Text style={styles.gameTitle}>UNO vs {selectedMatch.name}</Text>
-                  </View>
-                  
-                  <View style={styles.unoGameContent}>
-                    <Text style={styles.unoTitle}>🎮 UNO Battle Arena</Text>
-                    <Text style={styles.unoSubtitle}>
-                      Get ready for an epic card battle with {selectedMatch.name}!
-                    </Text>
-                    
-                    <View style={styles.unoFeatures}>
-                      <Text style={styles.unoFeature}>• Classic UNO rules</Text>
-                      <Text style={styles.unoFeature}>• Real-time multiplayer</Text>
-                      <Text style={styles.unoFeature}>• Special power cards</Text>
-                      <Text style={styles.unoFeature}>• Victory celebrations</Text>
-                    </View>
-                    
-                    <TouchableOpacity 
-                      style={styles.startUnoButton}
-                      onPress={() => handleGameComplete('player')}
-                    >
-                      <LinearGradient
-                        colors={['#FF6B6B', '#FF8E8E']}
-                        style={styles.startUnoButtonGradient}
-                      >
-                        <Gamepad2 size={24} color="#FFFFFF" />
-                        <Text style={styles.startUnoButtonText}>Start UNO Battle</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </SafeAreaView>
-            </LinearGradient>
-          </View>
-        );
-      default:
-        return null;
-    }
+    return (
+      <GameContainer
+        currentGame={currentGame}
+        onGameComplete={handleGameComplete}
+        onBack={handleBackFromGame}
+        initialState={currentGameState}
+        onStateUpdate={handleGameStateUpdate}
+      />
+    );
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00C2FF" />
+      </View>
+    );
+  }
+
+  // Render matches list when no match is selected
   if (!selectedMatch) {
     return (
       <View style={styles.container}>
@@ -499,11 +717,11 @@ export default function ChatScreen() {
         >
           <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
             <View style={styles.header}>
-              <View style={styles.headerTop}>
+              <View style={styles.headerLeft}>
                 <Text style={styles.headerTitle}>Chats</Text>
                 <View style={styles.headerBadge}>
                   <Flame size={16} color="#FF6B6B" />
-                  <Text style={styles.headerBadgeText}>{SAMPLE_MATCHES.length} Active</Text>
+                  <Text style={styles.headerBadgeText}>{matches.length} Active</Text>
                 </View>
               </View>
               <Text style={styles.headerSubtitle}>Your matches and conversations</Text>
@@ -516,7 +734,7 @@ export default function ChatScreen() {
               bounces={true}
               alwaysBounceVertical={true}
             >
-              {SAMPLE_MATCHES.map((match) => (
+              {matches.map((match) => (
                 <TouchableOpacity
                   key={match.id}
                   style={styles.matchItem}
@@ -527,35 +745,36 @@ export default function ChatScreen() {
                     style={styles.matchItemGradient}
                   >
                     <View style={styles.matchAvatarContainer}>
-                      <Image source={{ uri: match.avatar }} style={styles.matchAvatar} />
-                      <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(match.status) }]} />
+                      <Image 
+                        source={{ uri: match.profile.photos[0] }} 
+                        style={styles.matchAvatar}
+                      />
                     </View>
                     
                     <View style={styles.matchInfo}>
                       <View style={styles.matchHeader}>
                         <View style={styles.matchNameSection}>
-                          <Text style={styles.matchName}>{match.name}</Text>
+                          <Text style={styles.matchName}>{match.profile.name}</Text>
                           <View style={styles.matchBadges}>
                             <View style={styles.levelBadge}>
                               <Crown size={10} color="#FFD700" />
-                              <Text style={styles.levelText}>{match.level}</Text>
-                            </View>
-                            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(match.status) }]}>
-                              <Text style={styles.statusText}>{getStatusText(match.status)}</Text>
+                              <Text style={styles.levelText}>{match.profile.level}</Text>
                             </View>
                           </View>
                         </View>
-                        <Text style={styles.matchTime}>{formatTime(match.timestamp)}</Text>
+                        <Text style={styles.matchTime}>
+                          {formatTime(match.last_message_time)}
+                        </Text>
                       </View>
                       
                       <View style={styles.matchFooter}>
                         <Text style={styles.matchMessage} numberOfLines={1}>
-                          {match.lastMessage}
+                          {match.last_message}
                         </Text>
                         
-                        {match.unread > 0 && (
+                        {match.unreadCount > 0 && (
                           <View style={styles.unreadBadge}>
-                            <Text style={styles.unreadText}>{match.unread}</Text>
+                            <Text style={styles.unreadText}>{match.unreadCount}</Text>
                           </View>
                         )}
                       </View>
@@ -563,7 +782,7 @@ export default function ChatScreen() {
                       <View style={styles.streakRow}>
                         <Zap size={12} color="#FFD700" />
                         <Text style={styles.streakText}>
-                          {match.streak} game streak
+                          {match.game_streak} game streak
                         </Text>
                       </View>
                     </View>
@@ -577,58 +796,44 @@ export default function ChatScreen() {
     );
   }
 
+  // Render chat view
   return (
-    <TouchableWithoutFeedback onPress={dismissKeyboard} accessible={false}>
-      <View style={styles.container}>
-        <LinearGradient
-          colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
-          style={styles.backgroundGradient}
-        >
-          <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
-            <KeyboardAvoidingView 
-              style={styles.chatContainer}
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-            >
-              <View style={styles.chatHeader}>
-                <TouchableOpacity 
-                  onPress={() => setSelectedMatch(null)}
-                  style={styles.backButton}
-                >
-                  <ArrowLeft size={24} color="#00F5FF" />
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.chatHeaderInfo}
-                  onPress={handleViewProfile}
-                >
-                  <Text style={styles.chatHeaderTitle}>{selectedMatch.name}</Text>
-                  <View style={styles.chatHeaderBadges}>
-                    <View style={styles.chatLevelBadge}>
-                      <Crown size={12} color="#FFD700" />
-                      <Text style={styles.chatLevelText}>LVL {selectedMatch.level}</Text>
-                    </View>
-                    <View style={[styles.chatStatusBadge, { backgroundColor: getStatusColor(selectedMatch.status) }]}>
-                      <Text style={styles.chatStatusText}>{getStatusText(selectedMatch.status)}</Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.chatHeaderRight}
-                  onPress={handleViewProfile}
-                >
-                  <Image source={{ uri: selectedMatch.avatar }} style={styles.chatAvatar} />
-                </TouchableOpacity>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={['#0F0F23', '#1A1A3A', '#2D1B69']}
+        style={styles.backgroundGradient}
+      >
+        <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <TouchableOpacity onPress={() => setSelectedMatch(null)}>
+                <ArrowLeft size={24} color={theme.colors.text.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleViewProfile}>
+                <Text style={styles.headerTitle}>{selectedMatch.profile.name}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.headerRight}>
+              <View style={styles.levelBadge}>
+                <Crown size={12} color="#FFD700" />
+                <Text style={styles.levelText}>{selectedMatch.profile.level}</Text>
               </View>
+              <View style={styles.streakRow}>
+                <Zap size={12} color="#FFD700" />
+                <Text style={styles.streakText}>{selectedMatch.game_streak}</Text>
+              </View>
+            </View>
+          </View>
 
+          <KeyboardAvoidingView 
+            style={{ flex: 1 }} 
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <TouchableWithoutFeedback onPress={dismissKeyboard}>
               <ScrollView
                 ref={scrollViewRef}
-                style={styles.messagesContainer}
-                contentContainerStyle={styles.messagesContent}
-                showsVerticalScrollIndicator={true}
-                bounces={true}
-                alwaysBounceVertical={true}
+                style={styles.messagesList}
+                contentContainerStyle={styles.messagesListContent}
                 onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
               >
                 {messages.map((message) => (
@@ -636,843 +841,95 @@ export default function ChatScreen() {
                     key={message.id}
                     style={[
                       styles.messageContainer,
-                      message.type === 'game-invite' ? styles.gameInviteContainer : (
-                        message.sender === "user" ? styles.userMessage : styles.matchMessageBubble
-                      ),
+                      message.sender_id === selectedMatch.profile.id
+                        ? styles.messageMatch
+                        : styles.messageUser,
                     ]}
                   >
-                    {message.type === 'game-invite' && (
-                      <View style={styles.gameInviteWrapper}>
-                        <LinearGradient
-                          colors={['rgba(15, 15, 35, 0.95)', 'rgba(31, 31, 58, 0.9)']}
-                          style={styles.gameInviteCard}
-                        >
-                          <View style={styles.gameInviteContent}>
-                            {/* Game Icon and Header */}
-                            <View style={styles.gameInviteHeader}>
-                              <View style={styles.gameIconWrapper}>
-                                <LinearGradient
-                                  colors={[getGameData(message.gameType!).color, `${getGameData(message.gameType!).color}DD`]}
-                                  style={styles.gameIconContainer}
-                                >
-                                  {React.createElement(getGameData(message.gameType!).icon, {
-                                    size: Math.min(screenWidth * 0.08, 32),
-                                    color: '#FFFFFF'
-                                  })}
-                                </LinearGradient>
-                              </View>
-                              
-                              <View style={styles.gameInviteInfo}>
-                                <Text style={styles.gameInviteTitle}>{message.gameName}</Text>
-                                <Text style={styles.gameInviteDescription}>
-                                  {getGameData(message.gameType!).description}
-                                </Text>
-                                
-                                <View style={styles.gameMetaInfo}>
-                                  <View style={styles.gameMetaItem}>
-                                    <Users size={Math.min(screenWidth * 0.035, 14)} color="#9CA3AF" />
-                                    <Text style={styles.gameMetaText}>
-                                      {getGameData(message.gameType!).players}
-                                    </Text>
-                                  </View>
-                                  <View style={styles.gameMetaItem}>
-                                    <Clock size={Math.min(screenWidth * 0.035, 14)} color="#9CA3AF" />
-                                    <Text style={styles.gameMetaText}>
-                                      {getGameData(message.gameType!).duration}
-                                    </Text>
-                                  </View>
-                                </View>
-                              </View>
-                            </View>
-                            
-                            {/* Game Status and Actions */}
-                            <View style={styles.gameInviteActions}>
-                              <View style={styles.gameInviteStatus}>
-                                <Text style={styles.gameInviteFrom}>
-                                  {message.sender === 'user' ? 'You invited' : `${selectedMatch.name} invited you`}
-                                </Text>
-                                <Text style={styles.gameInviteTime}>
-                                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                              </View>
-                              
-                              {message.gameStatus === 'pending' && (
-                                <TouchableOpacity
-                                  style={styles.joinGameButton}
-                                  onPress={() => handleJoinGame(message.gameType!, message.gameName!)}
-                                  activeOpacity={0.8}
-                                >
-                                  <LinearGradient
-                                    colors={['#00F5FF', '#0080FF']}
-                                    style={styles.joinGameButtonGradient}
-                                  >
-                                    <Play size={Math.min(screenWidth * 0.045, 18)} color="#FFFFFF" />
-                                    <Text style={styles.joinGameButtonText}>Join Game</Text>
-                                  </LinearGradient>
-                                </TouchableOpacity>
-                              )}
-                              
-                              {message.gameStatus === 'active' && (
-                                <View style={styles.gameActiveStatus}>
-                                  <LinearGradient
-                                    colors={['rgba(6, 255, 165, 0.2)', 'rgba(0, 212, 170, 0.1)']}
-                                    style={styles.gameActiveGradient}
-                                  >
-                                    <View style={styles.gameActiveIndicator}>
-                                      <View style={styles.gameActiveDot} />
-                                      <Text style={styles.gameActiveText}>Game Completed</Text>
-                                    </View>
-                                  </LinearGradient>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                        </LinearGradient>
-                      </View>
-                    )}
-                    
-                    {message.type === 'text' && (
-                      <>
-                        <Text style={[
-                          styles.messageText,
-                          message.sender === 'user' ? styles.userMessageText : styles.matchMessageText,
-                        ]}>
-                          {message.text}
-                        </Text>
-                        <Text style={[
-                          styles.messageTime,
-                          message.sender === 'user' ? styles.userMessageTime : styles.matchMessageTime,
-                        ]}>
-                          {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                      </>
-                    )}
+                    <View
+                      style={[
+                        styles.messageBubble,
+                        message.sender_id === selectedMatch.profile.id
+                          ? styles.messageBubbleMatch
+                          : styles.messageBubbleUser,
+                      ]}
+                    >
+                      <Text style={styles.messageText}>{message.content}</Text>
+                      <Text style={styles.messageTime}>
+                        {formatTime(message.created_at)}
+                      </Text>
+                    </View>
                   </View>
                 ))}
               </ScrollView>
+            </TouchableWithoutFeedback>
 
-              {showGameSelector && (
-                <View style={styles.gameSelectorContainer}>
-                  <LinearGradient
-                    colors={['rgba(31, 31, 58, 0.95)', 'rgba(45, 27, 105, 0.95)']}
-                    style={styles.gameSelectorGradient}
-                  >
-                    <View style={styles.gameSelectorHeader}>
-                      <Text style={styles.gameSelectorTitle}>Choose a Game</Text>
-                      <TouchableOpacity onPress={() => setShowGameSelector(false)}>
-                        <Text style={styles.gameSelectorClose}>✕</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <ScrollView 
-                      horizontal 
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.gamesScrollContent}
-                    >
-                      <View style={styles.gamesRow}>
-                        {AVAILABLE_GAMES.map((game) => (
-                          <TouchableOpacity
-                            key={game.id}
-                            style={styles.gameOption}
-                            onPress={() => sendGameInvite(game.id, game.name)}
-                          >
-                            <LinearGradient
-                              colors={[`${game.color}20`, `${game.color}10`]}
-                              style={styles.gameOptionGradient}
-                            >
-                              {React.createElement(game.icon, {
-                                size: Math.min(screenWidth * 0.06, 24),
-                                color: game.color
-                              })}
-                              <Text style={styles.gameOptionText}>{game.name}</Text>
-                            </LinearGradient>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  </LinearGradient>
-                </View>
-              )}
-
-              <View style={styles.inputContainer}>
-                <LinearGradient
-                  colors={['rgba(31, 31, 58, 0.95)', 'rgba(45, 27, 105, 0.95)']}
-                  style={styles.inputGradient}
+            <View style={styles.inputContainer}>
+              <View style={styles.inputRow}>
+                <TouchableOpacity
+                  style={styles.gameButton}
+                  onPress={() => setShowGameSelector(true)}
                 >
-                  <View style={styles.inputRow}>
-                    <TouchableOpacity style={styles.inputButton}>
-                      <Smile size={Math.min(screenWidth * 0.06, 24)} color="#00F5FF" />
-                    </TouchableOpacity>
-                    
-                    <TextInput
-                      style={styles.textInput}
-                      value={inputText}
-                      onChangeText={setInputText}
-                      placeholder="Type a message..."
-                      placeholderTextColor="rgba(156, 163, 175, 0.7)"
-                      multiline
-                      returnKeyType="send"
-                      onSubmitEditing={() => {
-                        if (inputText.trim()) {
-                          sendMessage();
-                        }
-                      }}
-                      onFocus={() => {
-                        setTimeout(() => {
-                          scrollViewRef.current?.scrollToEnd({ animated: true });
-                        }, 100);
-                      }}
-                    />
-                    
-                    <TouchableOpacity 
-                      style={styles.inputButton}
-                      onPress={() => setShowGameSelector(!showGameSelector)}
-                    >
-                      <Plus size={Math.min(screenWidth * 0.06, 24)} color="#00F5FF" />
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.sendButton, inputText.trim() && styles.sendButtonActive]}
-                      onPress={sendMessage}
-                    >
-                      <LinearGradient
-                        colors={inputText.trim() ? ['#00F5FF', '#0080FF'] : ['#374151', '#4B5563']}
-                        style={styles.sendButtonGradient}
-                      >
-                        <Send size={Math.min(screenWidth * 0.05, 20)} color="#FFFFFF" />
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </View>
-                </LinearGradient>
+                  <Gamepad2 size={20} color={theme.colors.text.primary} />
+                </TouchableOpacity>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Type a message..."
+                  placeholderTextColor={theme.colors.text.secondary}
+                  value={inputText}
+                  onChangeText={setInputText}
+                  multiline
+                />
+                <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+                  <Send size={20} color={theme.colors.text.primary} />
+                </TouchableOpacity>
               </View>
-            </KeyboardAvoidingView>
-          </SafeAreaView>
-        </LinearGradient>
-      </View>
-    </TouchableWithoutFeedback>
+            </View>
+          </KeyboardAvoidingView>
+
+          {showGameSelector && (
+            <Animated.View
+              style={[
+                styles.gameSelectorContainer,
+                {
+                  transform: [
+                    {
+                      translateY: slideAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [300, 0],
+                      }),
+                    },
+                  ],
+                  opacity: fadeAnim,
+                },
+              ]}
+            >
+              {AVAILABLE_GAMES.map((game) => (
+                <TouchableOpacity
+                  key={game.id}
+                  style={styles.gameOption}
+                  onPress={() => sendGameInvite(game.id, game.name)}
+                >
+                  <View
+                    style={[
+                      styles.gameOptionIcon,
+                      { backgroundColor: game.color },
+                    ]}
+                  >
+                    <game.icon size={24} color="#FFFFFF" />
+                  </View>
+                  <View style={styles.gameOptionInfo}>
+                    <Text style={styles.gameOptionTitle}>{game.name}</Text>
+                    <Text style={styles.gameOptionDescription}>
+                      {game.description}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </Animated.View>
+          )}
+        </SafeAreaView>
+      </LinearGradient>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  backgroundGradient: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: screenWidth * 0.05,
-    paddingTop: screenHeight * 0.02,
-    paddingBottom: screenHeight * 0.025,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  headerTitle: {
-    fontSize: Math.min(screenWidth * 0.08, 32),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 245, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  headerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: screenWidth * 0.03,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.3)',
-  },
-  headerBadgeText: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Bold',
-    color: '#FF6B6B',
-    marginLeft: 4,
-  },
-  headerSubtitle: {
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
-  },
-  matchesList: {
-    flex: 1,
-    width: '100%',
-  },
-  matchesListContent: {
-    paddingTop: 10,
-    paddingBottom: 20,
-    flexGrow: 1,
-  },
-  matchItem: {
-    marginHorizontal: screenWidth * 0.05,
-    marginBottom: screenHeight * 0.02,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  matchItemGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: screenWidth * 0.04,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  matchAvatarContainer: {
-    position: 'relative',
-    marginRight: screenWidth * 0.04,
-  },
-  matchAvatar: {
-    width: screenWidth * 0.14,
-    height: screenWidth * 0.14,
-    borderRadius: screenWidth * 0.07,
-  },
-  statusIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: screenWidth * 0.03,
-    height: screenWidth * 0.03,
-    borderRadius: screenWidth * 0.015,
-    borderWidth: 2,
-    borderColor: '#0F0F23',
-  },
-  matchInfo: {
-    flex: 1,
-  },
-  matchHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  matchNameSection: {
-    flex: 1,
-  },
-  matchName: {
-    fontSize: Math.min(screenWidth * 0.045, 18),
-    fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  matchBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-  },
-  levelText: {
-    fontSize: Math.min(screenWidth * 0.025, 10),
-    fontFamily: 'Inter-Bold',
-    color: '#FFD700',
-    marginLeft: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: Math.min(screenWidth * 0.025, 10),
-    fontFamily: 'Inter-Bold',
-    color: '#0F0F23',
-  },
-  matchTime: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
-  },
-  matchFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  matchMessage: {
-    fontSize: Math.min(screenWidth * 0.035, 14),
-    fontFamily: 'Inter-Regular',
-    color: '#E5E7EB',
-    flex: 1,
-  },
-  unreadBadge: {
-    backgroundColor: '#00F5FF',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  unreadText: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Bold',
-    color: '#0F0F23',
-  },
-  streakRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  streakText: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Medium',
-    color: '#FFD700',
-    marginLeft: 4,
-  },
-  chatContainer: {
-    flex: 1,
-  },
-  chatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: screenWidth * 0.05,
-    paddingVertical: screenHeight * 0.02,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    minHeight: screenHeight * 0.1,
-  },
-  backButton: {
-    marginRight: screenWidth * 0.04,
-    padding: 8,
-  },
-  chatHeaderInfo: {
-    flex: 1,
-  },
-  chatHeaderTitle: {
-    fontSize: Math.min(screenWidth * 0.05, 20),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  chatHeaderBadges: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  chatLevelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-  },
-  chatLevelText: {
-    fontSize: Math.min(screenWidth * 0.025, 10),
-    fontFamily: 'Inter-Bold',
-    color: '#FFD700',
-    marginLeft: 4,
-  },
-  chatStatusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  chatStatusText: {
-    fontSize: Math.min(screenWidth * 0.025, 10),
-    fontFamily: 'Inter-Bold',
-    color: '#0F0F23',
-  },
-  chatHeaderRight: {
-    marginLeft: screenWidth * 0.04,
-  },
-  chatAvatar: {
-    width: screenWidth * 0.1,
-    height: screenWidth * 0.1,
-    borderRadius: screenWidth * 0.05,
-  },
-  messagesContainer: {
-    flex: 1,
-    width: '100%',
-  },
-  messagesContent: {
-    paddingTop: 20,
-    paddingBottom: 20,
-    flexGrow: 1,
-  },
-  messageContainer: {
-    marginBottom: screenHeight * 0.02,
-    maxWidth: '85%',
-  },
-  userMessage: {
-    alignSelf: 'flex-end',
-    backgroundColor: 'rgba(0, 245, 255, 0.2)',
-    borderRadius: 20,
-    borderBottomRightRadius: 4,
-    paddingHorizontal: screenWidth * 0.04,
-    paddingVertical: screenHeight * 0.015,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.3)',
-  },
-  matchMessageBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(31, 31, 58, 0.8)',
-    borderRadius: 20,
-    borderBottomLeftRadius: 4,
-    paddingHorizontal: screenWidth * 0.04,
-    paddingVertical: screenHeight * 0.015,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  gameInviteContainer: {
-    alignSelf: 'center',
-    width: '95%',
-    marginVertical: screenHeight * 0.01,
-  },
-  gameInviteWrapper: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-    width: '100%',
-  },
-  gameInviteCard: {
-    borderWidth: 2,
-    borderColor: 'rgba(0, 245, 255, 0.3)',
-    width: '100%',
-  },
-  gameInviteContent: {
-    padding: screenWidth * 0.05,
-    width: '100%',
-  },
-  gameInviteHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: screenHeight * 0.02,
-    maxWidth: '100%',
-  },
-  gameIconWrapper: {
-    marginRight: screenWidth * 0.04,
-    flexShrink: 0,
-  },
-  gameIconContainer: {
-    width: screenWidth * 0.15,
-    height: screenWidth * 0.15,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    flexShrink: 0,
-  },
-  gameInviteInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  gameInviteTitle: {
-    fontSize: Math.min(screenWidth * 0.055, 22),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    flexWrap: 'wrap',
-  },
-  gameInviteDescription: {
-    fontSize: Math.min(screenWidth * 0.035, 14),
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-    marginBottom: screenHeight * 0.015,
-    lineHeight: 20,
-    flexWrap: 'wrap',
-  },
-  gameMetaInfo: {
-    flexDirection: 'row',
-    gap: screenWidth * 0.04,
-    flexWrap: 'wrap',
-  },
-  gameMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flexShrink: 0,
-  },
-  gameMetaText: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
-  },
-  gameInviteActions: {
-    gap: screenHeight * 0.015,
-    maxWidth: '100%',
-  },
-  gameInviteStatus: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
-  gameInviteFrom: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Medium',
-    color: '#00F5FF',
-    flex: 1,
-  },
-  gameInviteTime: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Medium',
-    color: 'rgba(255, 255, 255, 0.6)',
-    flexShrink: 0,
-  },
-  joinGameButton: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#00F5FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-    width: '100%',
-  },
-  joinGameButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: screenHeight * 0.02,
-    paddingHorizontal: screenWidth * 0.06,
-    gap: 8,
-  },
-  joinGameButtonText: {
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-  },
-  gameActiveStatus: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    maxWidth: '100%',
-  },
-  gameActiveGradient: {
-    paddingVertical: screenHeight * 0.015,
-    paddingHorizontal: screenWidth * 0.04,
-    borderWidth: 1,
-    borderColor: 'rgba(6, 255, 165, 0.3)',
-    maxWidth: '100%',
-  },
-  gameActiveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  gameActiveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#06FFA5',
-    flexShrink: 0,
-  },
-  gameActiveText: {
-    fontSize: Math.min(screenWidth * 0.035, 14),
-    fontFamily: 'Inter-Bold',
-    color: '#06FFA5',
-  },
-  messageText: {
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Regular',
-    lineHeight: 22,
-  },
-  userMessageText: {
-    color: '#FFFFFF',
-  },
-  matchMessageText: {
-    color: '#E5E7EB',
-  },
-  messageTime: {
-    fontSize: Math.min(screenWidth * 0.0275, 11),
-    fontFamily: 'Inter-Medium',
-    marginTop: 4,
-  },
-  userMessageTime: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'right',
-  },
-  matchMessageTime: {
-    color: 'rgba(229, 231, 235, 0.7)',
-  },
-  gameSelectorContainer: {
-    paddingHorizontal: screenWidth * 0.04,
-    paddingVertical: screenHeight * 0.015,
-    maxHeight: screenHeight * 0.3,
-    zIndex: 10,
-    position: 'absolute',
-    bottom: screenHeight * 0.08,
-    left: 0,
-    right: 0,
-  },
-  gameSelectorGradient: {
-    borderRadius: 16,
-    padding: screenWidth * 0.04,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.2)',
-  },
-  gameSelectorHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: screenHeight * 0.015,
-  },
-  gameSelectorTitle: {
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-  },
-  gameSelectorClose: {
-    fontSize: Math.min(screenWidth * 0.045, 18),
-    color: '#9CA3AF',
-  },
-  gamesScrollContent: {
-    paddingHorizontal: 4,
-    paddingBottom: 8,
-  },
-  gamesRow: {
-    flexDirection: 'row',
-    gap: screenWidth * 0.03,
-    flexWrap: 'nowrap',
-  },
-  gameOption: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    width: screenWidth * 0.3,
-    minWidth: 100,
-  },
-  gameOptionGradient: {
-    padding: screenWidth * 0.03,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    minHeight: 80,
-    justifyContent: 'center',
-  },
-  gameOptionText: {
-    fontSize: Math.min(screenWidth * 0.03, 12),
-    fontFamily: 'Inter-Medium',
-    color: '#FFFFFF',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  inputContainer: {
-    paddingHorizontal: screenWidth * 0.04,
-    paddingVertical: screenHeight * 0.015,
-    paddingBottom: Math.max(screenHeight * 0.015, 12),
-  },
-  inputGradient: {
-    borderRadius: 25,
-    paddingHorizontal: screenWidth * 0.04,
-    paddingVertical: screenHeight * 0.015,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 245, 255, 0.2)',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-  },
-  inputButton: {
-    padding: screenWidth * 0.02,
-    marginHorizontal: screenWidth * 0.01,
-  },
-  textInput: {
-    flex: 1,
-    backgroundColor: 'rgba(31, 31, 58, 0.5)',
-    borderRadius: 20,
-    paddingHorizontal: screenWidth * 0.04,
-    paddingVertical: screenHeight * 0.015,
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Regular',
-    maxHeight: screenHeight * 0.12,
-    marginHorizontal: screenWidth * 0.02,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  sendButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginLeft: screenWidth * 0.01,
-  },
-  sendButtonGradient: {
-    padding: screenWidth * 0.03,
-  },
-  sendButtonActive: {},
-  gameContainer: {
-    flex: 1,
-    padding: screenWidth * 0.05,
-  },
-  gameHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: screenHeight * 0.04,
-    paddingTop: screenHeight * 0.02,
-  },
-  gameTitle: {
-    fontSize: Math.min(screenWidth * 0.06, 24),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    marginLeft: screenWidth * 0.04,
-  },
-  unoGameContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: screenWidth * 0.05,
-  },
-  unoTitle: {
-    fontSize: Math.min(screenWidth * 0.09, 36),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: screenHeight * 0.02,
-  },
-  unoSubtitle: {
-    fontSize: Math.min(screenWidth * 0.045, 18),
-    fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginBottom: screenHeight * 0.05,
-  },
-  unoFeatures: {
-    alignItems: 'flex-start',
-    marginBottom: screenHeight * 0.05,
-  },
-  unoFeature: {
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Regular',
-    color: '#E5E7EB',
-    marginBottom: screenHeight * 0.01,
-  },
-  startUnoButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  startUnoButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: screenWidth * 0.08,
-    paddingVertical: screenHeight * 0.02,
-    gap: 8,
-  },
-  startUnoButtonText: {
-    fontSize: Math.min(screenWidth * 0.045, 18),
-    fontFamily: 'Inter-Bold',
-    color: '#FFFFFF',
-  },
-});

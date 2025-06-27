@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ThumbsDown, ThumbsUp, Trophy } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Animated,
+    Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Flame, Trophy, Clock, ThumbsUp, ThumbsDown } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -45,98 +45,160 @@ const STATEMENTS: Statement[] = [
 interface NeverHaveIEverGameProps {
   onGameComplete: (winner: 'player' | 'opponent') => void;
   onBack: () => void;
+  initialState?: {
+    currentPlayer: 'player' | 'opponent';
+    currentQuestion: string | null;
+    playerScore: number;
+    opponentScore: number;
+    round: number;
+    gamePhase: 'question' | 'answering' | 'viewing' | 'waiting' | 'completed';
+    usedQuestions: string[];
+    playerAnswer: boolean | null;
+    opponentAnswer: boolean | null;
+  };
+  onStateUpdate?: (state: any) => void;
 }
 
-export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHaveIEverGameProps) {
-  const [currentStatement, setCurrentStatement] = useState<Statement | null>(null);
-  const [playerLives, setPlayerLives] = useState(5);
-  const [opponentLives, setOpponentLives] = useState(5);
-  const [round, setRound] = useState(1);
-  const [gamePhase, setGamePhase] = useState<'statement' | 'waiting' | 'completed'>('statement');
-  const [playerChoice, setPlayerChoice] = useState<'done' | 'never' | null>(null);
-  const [opponentChoice, setOpponentChoice] = useState<'done' | 'never' | null>(null);
-  const [usedStatements, setUsedStatements] = useState<string[]>([]);
+export default function NeverHaveIEverGame({ 
+  onGameComplete, 
+  onBack,
+  initialState,
+  onStateUpdate 
+}: NeverHaveIEverGameProps) {
+  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>(
+    initialState?.currentPlayer || 'player'
+  );
+  const [currentQuestion, setCurrentQuestion] = useState<string | null>(
+    initialState?.currentQuestion || null
+  );
+  const [playerScore, setPlayerScore] = useState(initialState?.playerScore || 5);
+  const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 5);
+  const [round, setRound] = useState(initialState?.round || 1);
+  const [gamePhase, setGamePhase] = useState<'question' | 'answering' | 'viewing' | 'waiting' | 'completed'>(
+    initialState?.gamePhase || 'question'
+  );
+  const [playerAnswer, setPlayerAnswer] = useState<boolean | null>(initialState?.playerAnswer || null);
+  const [opponentAnswer, setOpponentAnswer] = useState<boolean | null>(initialState?.opponentAnswer || null);
+  const [usedQuestions, setUsedQuestions] = useState<string[]>(initialState?.usedQuestions || []);
   const [isProcessingRound, setIsProcessingRound] = useState(false);
-  const fadeAnim = new Animated.Value(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const maxRounds = 10;
 
   useEffect(() => {
-    generateNewStatement();
-  }, []);
-
-  useEffect(() => {
-    if (playerChoice && opponentChoice && !isProcessingRound) {
-      setIsProcessingRound(true);
-      setTimeout(() => {
-        processRound();
-      }, 2000);
+    if (!initialState) {
+      generateNewQuestion();
     }
-  }, [playerChoice, opponentChoice, isProcessingRound]);
-
-  useEffect(() => {
+    // Start fade animation
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start();
-  }, [currentStatement]);
+  }, []);
 
-  const generateNewStatement = () => {
-    const availableStatements = STATEMENTS.filter(s => !usedStatements.includes(s.id));
-    if (availableStatements.length === 0) {
-      // Reset if all statements used
-      setUsedStatements([]);
-      setCurrentStatement(STATEMENTS[Math.floor(Math.random() * STATEMENTS.length)]);
-    } else {
-      const randomStatement = availableStatements[Math.floor(Math.random() * availableStatements.length)];
-      setCurrentStatement(randomStatement);
-      setUsedStatements(prev => [...prev, randomStatement.id]);
+  useEffect(() => {
+    if (playerAnswer !== null && opponentAnswer !== null && !isProcessingRound) {
+      setIsProcessingRound(true);
+      const timeout = setTimeout(() => {
+        processRound();
+      }, 2000);
+      return () => clearTimeout(timeout);
     }
-    fadeAnim.setValue(0);
+  }, [playerAnswer, opponentAnswer, isProcessingRound]);
+
+  useEffect(() => {
+    if (currentQuestion) {
+      fadeAnim.setValue(0);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [currentQuestion]);
+
+  useEffect(() => {
+    onStateUpdate?.({
+      currentPlayer,
+      currentQuestion,
+      playerScore,
+      opponentScore,
+      round,
+      gamePhase,
+      usedQuestions,
+      playerAnswer,
+      opponentAnswer
+    });
+  }, [
+    currentPlayer,
+    currentQuestion,
+    playerScore,
+    opponentScore,
+    round,
+    gamePhase,
+    usedQuestions,
+    playerAnswer,
+    opponentAnswer
+  ]);
+
+  const generateNewQuestion = () => {
+    const availableQuestions = STATEMENTS.filter(s => !usedQuestions.includes(s.id));
+    if (availableQuestions.length === 0) {
+      setUsedQuestions([]);
+      const randomQuestion = STATEMENTS[Math.floor(Math.random() * STATEMENTS.length)];
+      setCurrentQuestion(randomQuestion.id);
+      setUsedQuestions([randomQuestion.id]);
+    } else {
+      const randomQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+      setCurrentQuestion(randomQuestion.id);
+      setUsedQuestions(prev => [...prev, randomQuestion.id]);
+    }
   };
 
-  const handlePlayerChoice = (choice: 'done' | 'never') => {
+  const handlePlayerAnswer = (answer: boolean) => {
     if (isProcessingRound) return;
     Keyboard.dismiss();
     
-    setPlayerChoice(choice);
+    setPlayerAnswer(answer);
     setGamePhase('waiting');
     
-    // Simulate opponent choice
-    setTimeout(() => {
-      const opponentChoice = Math.random() > 0.5 ? 'done' : 'never';
-      setOpponentChoice(opponentChoice);
+    // Simulate opponent answer with delay
+    const timeout = setTimeout(() => {
+      const opponentAnswer = Math.random() > 0.5;
+      setOpponentAnswer(opponentAnswer);
     }, 1500);
+
+    return () => clearTimeout(timeout);
   };
 
   const processRound = () => {
-    let newPlayerLives = playerLives;
-    let newOpponentLives = opponentLives;
+    let newPlayerScore = playerScore;
+    let newOpponentScore = opponentScore;
 
     // Lose a life if you've done it
-    if (playerChoice === 'done') {
-      newPlayerLives = playerLives - 1;
-      setPlayerLives(newPlayerLives);
+    if (playerAnswer === true) {
+      newPlayerScore = playerScore - 1;
+      setPlayerScore(newPlayerScore);
     }
-    if (opponentChoice === 'done') {
-      newOpponentLives = opponentLives - 1;
-      setOpponentLives(newOpponentLives);
+    if (opponentAnswer === true) {
+      newOpponentScore = opponentScore - 1;
+      setOpponentScore(newOpponentScore);
     }
 
     // Check for game end
-    if (newPlayerLives <= 0 || newOpponentLives <= 0 || round >= maxRounds) {
+    if (newPlayerScore <= 0 || newOpponentScore <= 0 || round >= maxRounds) {
       setGamePhase('completed');
-      const winner = newPlayerLives > newOpponentLives ? 'player' : 'opponent';
+      const winner = newPlayerScore > newOpponentScore ? 'player' : 'opponent';
       setTimeout(() => onGameComplete(winner), 2000);
     } else {
       // Next round
       setRound(prev => prev + 1);
-      setPlayerChoice(null);
-      setOpponentChoice(null);
-      setGamePhase('statement');
+      setPlayerAnswer(null);
+      setOpponentAnswer(null);
+      setGamePhase('question');
       setIsProcessingRound(false);
-      generateNewStatement();
+      generateNewQuestion();
     }
   };
 
@@ -167,7 +229,7 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
   };
 
   if (gamePhase === 'completed') {
-    const winner = playerLives > opponentLives ? 'You' : 'Luna';
+    const winner = playerScore > opponentScore ? 'You' : 'Luna';
     return (
       <View style={styles.container}>
         <LinearGradient
@@ -180,9 +242,9 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
               <Text style={styles.completedTitle}>Game Complete!</Text>
               <Text style={styles.completedWinner}>{winner} Won!</Text>
               <Text style={styles.completedScore}>
-                Lives Remaining: You {playerLives} - Luna {opponentLives}
+                Lives Remaining: You {playerScore} - Luna {opponentScore}
               </Text>
-              <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerLives > opponentLives ? 'player' : 'opponent')}>
+              <TouchableOpacity style={styles.continueButton} onPress={() => onGameComplete(playerScore > opponentScore ? 'player' : 'opponent')}>
                 <LinearGradient
                   colors={['#00F5FF', '#0080FF']}
                   style={styles.continueButtonGradient}
@@ -224,33 +286,33 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
                 <View style={styles.playerLives}>
                   <Text style={styles.livesLabel}>You</Text>
                   <View style={styles.livesRow}>
-                    {renderLives(playerLives)}
+                    {renderLives(playerScore)}
                   </View>
                 </View>
                 <View style={styles.playerLives}>
                   <Text style={styles.livesLabel}>Luna</Text>
                   <View style={styles.livesRow}>
-                    {renderLives(opponentLives)}
+                    {renderLives(opponentScore)}
                   </View>
                 </View>
               </View>
 
               <View style={styles.gameArea}>
-                {currentStatement && (
+                {currentQuestion && (
                   <Animated.View style={[styles.statementContainer, { opacity: fadeAnim }]}>
-                    <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentStatement.category) }]}>
-                      <Text style={styles.categoryText}>{currentStatement.category.toUpperCase()}</Text>
+                    <View style={[styles.categoryBadge, { backgroundColor: getCategoryColor(currentQuestion) }]}>
+                      <Text style={styles.categoryText}>{currentQuestion.toUpperCase()}</Text>
                     </View>
 
                     <ScrollView style={styles.statementScroll}>
-                      <Text style={styles.statementText}>{currentStatement.text}</Text>
+                      <Text style={styles.statementText}>{currentQuestion}</Text>
                     </ScrollView>
 
-                    {gamePhase === 'statement' && !playerChoice && !isProcessingRound && (
+                    {gamePhase === 'question' && !playerAnswer && !isProcessingRound && (
                       <View style={styles.choiceButtons}>
                         <TouchableOpacity
                           style={styles.choiceButton}
-                          onPress={() => handlePlayerChoice('done')}
+                          onPress={() => handlePlayerAnswer(true)}
                         >
                           <LinearGradient
                             colors={['#FF006E', '#F72585']}
@@ -264,7 +326,7 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
 
                         <TouchableOpacity
                           style={styles.choiceButton}
-                          onPress={() => handlePlayerChoice('never')}
+                          onPress={() => handlePlayerAnswer(false)}
                         >
                           <LinearGradient
                             colors={['#06FFA5', '#00D4AA']}
@@ -281,32 +343,32 @@ export default function NeverHaveIEverGame({ onGameComplete, onBack }: NeverHave
                     {gamePhase === 'waiting' && (
                       <View style={styles.waitingContainer}>
                         <Text style={styles.waitingTitle}>Waiting for Luna...</Text>
-                        {playerChoice && (
+                        {playerAnswer && (
                           <Text style={styles.yourChoice}>
-                            You chose: {playerChoice === 'done' ? 'I HAVE' : 'NEVER'}
+                            You chose: {playerAnswer ? 'I HAVE' : 'NEVER'}
                           </Text>
                         )}
                       </View>
                     )}
 
-                    {playerChoice && opponentChoice && (
+                    {playerAnswer && opponentAnswer && (
                       <View style={styles.resultsContainer}>
                         <View style={styles.resultRow}>
                           <Text style={styles.resultLabel}>You:</Text>
                           <Text style={[
                             styles.resultChoice,
-                            { color: playerChoice === 'done' ? '#FF006E' : '#06FFA5' }
+                            { color: playerAnswer ? '#FF006E' : '#06FFA5' }
                           ]}>
-                            {playerChoice === 'done' ? 'I HAVE' : 'NEVER'}
+                            {playerAnswer ? 'I HAVE' : 'NEVER'}
                           </Text>
                         </View>
                         <View style={styles.resultRow}>
                           <Text style={styles.resultLabel}>Luna:</Text>
                           <Text style={[
                             styles.resultChoice,
-                            { color: opponentChoice === 'done' ? '#FF006E' : '#06FFA5' }
+                            { color: opponentAnswer ? '#FF006E' : '#06FFA5' }
                           ]}>
-                            {opponentChoice === 'done' ? 'I HAVE' : 'NEVER'}
+                            {opponentAnswer ? 'I HAVE' : 'NEVER'}
                           </Text>
                         </View>
                       </View>

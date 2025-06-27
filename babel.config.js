@@ -11,6 +11,15 @@ module.exports = function (api) {
           globals: ['__scanCodes'],
         },
       ],
+      [
+        'module-resolver',
+        {
+          root: ['.'],
+          alias: {
+            '@': '.',
+          },
+        },
+      ],
     ],
   };
 };

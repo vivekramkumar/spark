@@ -1,18 +1,18 @@
+import { useTheme } from '@/contexts/ThemeContext';
+import { router } from 'expo-router';
+import { Camera, CreditCard as Edit3, Heart, MessageCircle, Moon, Settings, Star, Sun, Trophy } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Switch,
-  Dimensions,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Settings, Trophy, Heart, MessageCircle, Star, CreditCard as Edit3, Camera, Moon, Sun } from 'lucide-react-native';
-import { router } from 'expo-router';
-import { useTheme } from '@/contexts/ThemeContext';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -35,7 +35,7 @@ const USER_PROFILE = {
 };
 
 export default function ProfileScreen() {
-  const { colors, isDarkMode, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const [preferences, setPreferences] = useState({
     showDistance: true,
     allowNotifications: true,
@@ -53,7 +53,7 @@ export default function ProfileScreen() {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: theme.colors.background.primary,
     },
     safeArea: {
       flex: 1,
@@ -71,22 +71,22 @@ export default function ProfileScreen() {
     headerTitle: {
       fontSize: Math.min(screenWidth * 0.08, 32),
       fontFamily: 'Inter-Bold',
-      color: colors.text,
+      color: theme.colors.text.primary,
     },
     settingsButton: {
       padding: 8,
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     profileCard: {
-      backgroundColor: colors.card,
+      backgroundColor: theme.colors.background.card,
       borderRadius: 16,
       marginBottom: screenHeight * 0.025,
       borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.text,
+      borderColor: theme.colors.border.default,
+      shadowColor: theme.colors.text.primary,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 8,
@@ -112,7 +112,7 @@ export default function ProfileScreen() {
       position: 'absolute',
       bottom: screenHeight * 0.015,
       right: screenHeight * 0.015,
-      backgroundColor: colors.primary,
+      backgroundColor: theme.colors.button.primary.background[0],
       borderRadius: 20,
       padding: 8,
     },
@@ -134,17 +134,17 @@ export default function ProfileScreen() {
     addPhotoButton: {
       width: '22%',
       height: screenHeight * 0.1,
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 8,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 2,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
       borderStyle: 'dashed',
     },
     addPhotoText: {
       fontSize: Math.min(screenWidth * 0.06, 24),
-      color: colors.textSecondary,
+      color: theme.colors.text.secondary,
       fontFamily: 'Inter-Bold',
     },
     profileInfo: {
@@ -159,25 +159,25 @@ export default function ProfileScreen() {
     profileName: {
       fontSize: Math.min(screenWidth * 0.07, 28),
       fontFamily: 'Inter-Bold',
-      color: colors.text,
+      color: theme.colors.text.primary,
     },
     editButton: {
       padding: 8,
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     profileLocation: {
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Medium',
-      color: colors.textSecondary,
+      color: theme.colors.text.secondary,
       marginBottom: screenHeight * 0.015,
     },
     profileBio: {
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Regular',
-      color: colors.text,
+      color: theme.colors.text.primary,
       lineHeight: 24,
       marginBottom: screenHeight * 0.025,
     },
@@ -186,27 +186,27 @@ export default function ProfileScreen() {
       flexWrap: 'wrap',
     },
     interestTag: {
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 20,
       paddingHorizontal: screenWidth * 0.04,
       paddingVertical: 8,
       marginRight: 8,
       marginBottom: 8,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     interestText: {
       fontSize: Math.min(screenWidth * 0.035, 14),
       fontFamily: 'Inter-Medium',
-      color: colors.text,
+      color: theme.colors.text.primary,
     },
     statsCard: {
-      backgroundColor: colors.card,
+      backgroundColor: theme.colors.background.card,
       borderRadius: 16,
       marginBottom: screenHeight * 0.025,
       borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.text,
+      borderColor: theme.colors.border.default,
+      shadowColor: theme.colors.text.primary,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 8,
@@ -218,7 +218,7 @@ export default function ProfileScreen() {
     sectionTitle: {
       fontSize: Math.min(screenWidth * 0.06, 24),
       fontFamily: 'Inter-Bold',
-      color: colors.text,
+      color: theme.colors.text.primary,
       marginBottom: screenHeight * 0.025,
     },
     statsGrid: {
@@ -228,33 +228,33 @@ export default function ProfileScreen() {
     },
     statItem: {
       flex: 1,
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 12,
       padding: screenWidth * 0.05,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     statNumber: {
       fontSize: Math.min(screenWidth * 0.07, 28),
       fontFamily: 'Inter-Bold',
-      color: colors.text,
+      color: theme.colors.text.primary,
       marginTop: 8,
     },
     statLabel: {
       fontSize: Math.min(screenWidth * 0.03, 12),
       fontFamily: 'Inter-Medium',
-      color: colors.textSecondary,
+      color: theme.colors.text.secondary,
       marginTop: 4,
       textAlign: 'center',
     },
     preferencesCard: {
-      backgroundColor: colors.card,
+      backgroundColor: theme.colors.background.card,
       borderRadius: 16,
       marginBottom: screenHeight * 0.025,
       borderWidth: 1,
-      borderColor: colors.border,
-      shadowColor: colors.text,
+      borderColor: theme.colors.border.default,
+      shadowColor: theme.colors.text.primary,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
       shadowRadius: 8,
@@ -269,7 +269,7 @@ export default function ProfileScreen() {
       alignItems: 'center',
       paddingVertical: screenHeight * 0.02,
       borderBottomWidth: 1,
-      borderBottomColor: colors.border,
+      borderBottomColor: theme.colors.border.default,
     },
     preferenceLeft: {
       flexDirection: 'row',
@@ -283,13 +283,13 @@ export default function ProfileScreen() {
     preferenceTitle: {
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Medium',
-      color: colors.text,
+      color: theme.colors.text.primary,
       marginBottom: 4,
     },
     preferenceSubtitle: {
       fontSize: Math.min(screenWidth * 0.035, 14),
       fontFamily: 'Inter-Regular',
-      color: colors.textSecondary,
+      color: theme.colors.text.secondary,
     },
   });
 
@@ -301,7 +301,7 @@ export default function ProfileScreen() {
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Profile</Text>
             <TouchableOpacity style={styles.settingsButton}>
-              <Settings size={Math.min(screenWidth * 0.06, 24)} color={colors.text} />
+              <Settings size={Math.min(screenWidth * 0.06, 24)} color={theme.colors.text.primary} />
             </TouchableOpacity>
           </View>
 
@@ -331,7 +331,7 @@ export default function ProfileScreen() {
                 <View style={styles.nameRow}>
                   <Text style={styles.profileName}>{USER_PROFILE.name}, {USER_PROFILE.age}</Text>
                   <TouchableOpacity style={styles.editButton} onPress={handleEditProfile}>
-                    <Edit3 size={Math.min(screenWidth * 0.045, 18)} color={colors.text} />
+                    <Edit3 size={Math.min(screenWidth * 0.045, 18)} color={theme.colors.text.primary} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.profileLocation}>{USER_PROFILE.location}</Text>
@@ -355,19 +355,19 @@ export default function ProfileScreen() {
               
               <View style={styles.statsGrid}>
                 <View style={styles.statItem}>
-                  <Heart size={Math.min(screenWidth * 0.06, 24)} color={colors.primary} />
+                  <Heart size={Math.min(screenWidth * 0.06, 24)} color={theme.colors.button.primary.background[0]} />
                   <Text style={styles.statNumber}>{USER_PROFILE.stats.matches}</Text>
                   <Text style={styles.statLabel}>Matches</Text>
                 </View>
                 
                 <View style={styles.statItem}>
-                  <MessageCircle size={Math.min(screenWidth * 0.06, 24)} color={colors.secondary} />
+                  <MessageCircle size={Math.min(screenWidth * 0.06, 24)} color={theme.colors.button.secondary.background[0]} />
                   <Text style={styles.statNumber}>{USER_PROFILE.stats.conversations}</Text>
                   <Text style={styles.statLabel}>Chats</Text>
                 </View>
                 
                 <View style={styles.statItem}>
-                  <Star size={Math.min(screenWidth * 0.06, 24)} color={colors.accent} />
+                  <Star size={Math.min(screenWidth * 0.06, 24)} color={theme.colors.button.warning.background[0]} />
                   <Text style={styles.statNumber}>{USER_PROFILE.stats.connections}</Text>
                   <Text style={styles.statLabel}>Connections</Text>
                 </View>
@@ -382,68 +382,68 @@ export default function ProfileScreen() {
               
               <View style={styles.preferenceItem}>
                 <View style={styles.preferenceLeft}>
-                  {isDarkMode ? (
-                    <Moon size={Math.min(screenWidth * 0.05, 20)} color={colors.text} />
+                  {theme.mode === 'dark' ? (
+                    <Moon size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.primary} />
                   ) : (
-                    <Sun size={Math.min(screenWidth * 0.05, 20)} color={colors.text} />
+                    <Sun size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.primary} />
                   )}
                   <View style={styles.preferenceText}>
                     <Text style={styles.preferenceTitle}>Dark Mode</Text>
-                    <Text style={styles.preferenceSubtitle}>Switch between light and dark themes</Text>
+                    <Text style={styles.preferenceSubtitle}>Toggle dark/light theme</Text>
                   </View>
                 </View>
                 <Switch
-                  value={isDarkMode}
+                  value={theme.mode === 'dark'}
                   onValueChange={toggleTheme}
-                  trackColor={{ false: colors.border, true: colors.primary }}
+                  trackColor={{ false: theme.colors.border.default, true: theme.colors.button.primary.background[0] }}
                   thumbColor="#FFFFFF"
                 />
               </View>
 
               <View style={styles.preferenceItem}>
                 <View style={styles.preferenceLeft}>
-                  <Settings size={Math.min(screenWidth * 0.05, 20)} color={colors.text} />
+                  <Settings size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.primary} />
                   <View style={styles.preferenceText}>
                     <Text style={styles.preferenceTitle}>Show Distance</Text>
-                    <Text style={styles.preferenceSubtitle}>Display distance to other users</Text>
+                    <Text style={styles.preferenceSubtitle}>Show distance on profiles</Text>
                   </View>
                 </View>
                 <Switch
                   value={preferences.showDistance}
                   onValueChange={(value) => updatePreference('showDistance', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
+                  trackColor={{ false: theme.colors.border.default, true: theme.colors.button.primary.background[0] }}
                   thumbColor="#FFFFFF"
                 />
               </View>
 
               <View style={styles.preferenceItem}>
                 <View style={styles.preferenceLeft}>
-                  <Heart size={Math.min(screenWidth * 0.05, 20)} color={colors.text} />
+                  <Heart size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.primary} />
                   <View style={styles.preferenceText}>
                     <Text style={styles.preferenceTitle}>Notifications</Text>
-                    <Text style={styles.preferenceSubtitle}>Get notified about new matches and messages</Text>
+                    <Text style={styles.preferenceSubtitle}>Enable push notifications</Text>
                   </View>
                 </View>
                 <Switch
                   value={preferences.allowNotifications}
                   onValueChange={(value) => updatePreference('allowNotifications', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
+                  trackColor={{ false: theme.colors.border.default, true: theme.colors.button.primary.background[0] }}
                   thumbColor="#FFFFFF"
                 />
               </View>
 
               <View style={[styles.preferenceItem, { borderBottomWidth: 0 }]}>
                 <View style={styles.preferenceLeft}>
-                  <Trophy size={Math.min(screenWidth * 0.05, 20)} color={colors.text} />
+                  <Trophy size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.primary} />
                   <View style={styles.preferenceText}>
                     <Text style={styles.preferenceTitle}>Private Mode</Text>
-                    <Text style={styles.preferenceSubtitle}>Hide your profile from discovery</Text>
+                    <Text style={styles.preferenceSubtitle}>Hide your profile from search</Text>
                   </View>
                 </View>
                 <Switch
                   value={preferences.privateMode}
                   onValueChange={(value) => updatePreference('privateMode', value)}
-                  trackColor={{ false: colors.border, true: colors.primary }}
+                  trackColor={{ false: theme.colors.border.default, true: theme.colors.button.primary.background[0] }}
                   thumbColor="#FFFFFF"
                 />
               </View>

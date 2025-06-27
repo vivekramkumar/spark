@@ -1,7 +1,7 @@
-import { Tabs } from 'expo-router';
-import { Heart, MessageCircle, User, Compass } from 'lucide-react-native';
-import { View, StyleSheet } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Tabs } from 'expo-router';
+import { Compass, Heart, MessageCircle, User } from 'lucide-react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 function TabBarIcon({ icon: Icon, focused, color }: { icon: any; focused: boolean; color: string }) {
   return (
@@ -13,22 +13,30 @@ function TabBarIcon({ icon: Icon, focused, color }: { icon: any; focused: boolea
 }
 
 export default function TabLayout() {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
+
+  if (!theme) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#00C2FF" />
+      </View>
+    );
+  }
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarActiveTintColor: theme.colors.button.primary.background[0],
+        tabBarInactiveTintColor: theme.colors.text.secondary,
         tabBarStyle: {
-          backgroundColor: colors.card,
+          backgroundColor: theme.colors.background.card,
           borderTopWidth: 1,
-          borderTopColor: colors.border,
+          borderTopColor: theme.colors.border.default,
           height: 88,
           paddingTop: 8,
           paddingBottom: 24,
-          shadowColor: colors.text,
+          shadowColor: theme.colors.text.primary,
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 8,
@@ -87,6 +95,12 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0F0F23', // Dark background color
+  },
   tabIcon: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Clock, Heart, Send } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+    Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Heart, Trophy, Clock, Send, Shuffle } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -43,50 +43,119 @@ const STORY_PROMPTS = [
 interface EmojiStoryGameProps {
   onGameComplete: (winner: 'player' | 'opponent') => void;
   onBack: () => void;
+  initialState?: {
+    currentPlayer: 'player' | 'opponent';
+    currentPrompt: string | null;
+    playerScore: number;
+    opponentScore: number;
+    round: number;
+    gamePhase: 'prompt' | 'creating' | 'viewing' | 'waiting' | 'completed' | 'results';
+    usedPrompts: string[];
+    playerStory: string;
+    opponentStory: string;
+    timeLeft: number;
+  };
+  onStateUpdate?: (state: any) => void;
 }
 
-export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGameProps) {
-  const [currentEmojis, setCurrentEmojis] = useState<string[]>([]);
-  const [currentPrompt, setCurrentPrompt] = useState<string>('');
-  const [playerStory, setPlayerStory] = useState<string>('');
-  const [opponentStory, setOpponentStory] = useState<string>('');
-  const [round, setRound] = useState(1);
-  const [gamePhase, setGamePhase] = useState<'writing' | 'waiting' | 'results' | 'completed'>('writing');
-  const [timeLeft, setTimeLeft] = useState(120); // 2 minutes per story
+export default function EmojiStoryGame({ 
+  onGameComplete, 
+  onBack,
+  initialState,
+  onStateUpdate 
+}: EmojiStoryGameProps) {
+  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>(
+    initialState?.currentPlayer || 'player'
+  );
+  const [currentPrompt, setCurrentPrompt] = useState<string | null>(
+    initialState?.currentPrompt || null
+  );
+  const [playerScore, setPlayerScore] = useState(initialState?.playerScore || 0);
+  const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
+  const [round, setRound] = useState(initialState?.round || 1);
+  const [gamePhase, setGamePhase] = useState<'prompt' | 'creating' | 'viewing' | 'waiting' | 'completed' | 'results'>(
+    initialState?.gamePhase || 'prompt'
+  );
+  const [playerStory, setPlayerStory] = useState(initialState?.playerStory || '');
+  const [opponentStory, setOpponentStory] = useState(initialState?.opponentStory || '');
+  const [usedPrompts, setUsedPrompts] = useState<string[]>(initialState?.usedPrompts || []);
+  const [timeLeft, setTimeLeft] = useState(initialState?.timeLeft || 30);
   const [isTimerActive, setIsTimerActive] = useState(false);
-  const [playerScore, setPlayerScore] = useState(0);
-  const [opponentScore, setOpponentScore] = useState(0);
+  const [currentEmojis, setCurrentEmojis] = useState<string[]>([]);
   const [isProcessingRound, setIsProcessingRound] = useState(false);
+
+  // Update parent component with current state when it changes
+  useEffect(() => {
+    onStateUpdate?.({
+      currentPlayer,
+      currentPrompt,
+      playerScore,
+      opponentScore,
+      round,
+      gamePhase,
+      usedPrompts,
+      playerStory,
+      opponentStory,
+      timeLeft
+    });
+  }, [
+    currentPlayer,
+    currentPrompt,
+    playerScore,
+    opponentScore,
+    round,
+    gamePhase,
+    usedPrompts,
+    playerStory,
+    opponentStory,
+    timeLeft
+  ]);
+
+  useEffect(() => {
+    if (!initialState) {
+      generateNewPrompt();
+    }
+  }, []);
 
   const maxRounds = 3;
 
   useEffect(() => {
-    generateNewChallenge();
-  }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: ReturnType<typeof setTimeout>;
     if (isTimerActive && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(time => time - 1);
       }, 1000);
-    } else if (timeLeft === 0 && gamePhase === 'writing' && !isProcessingRound) {
+    } else if (timeLeft === 0 && gamePhase === 'creating' && !isProcessingRound) {
       handleSubmitStory();
     }
     return () => clearInterval(interval);
   }, [isTimerActive, timeLeft, gamePhase, isProcessingRound]);
 
+  const generateNewPrompt = () => {
+    const availablePrompts = STORY_PROMPTS.filter(p => !usedPrompts.includes(p));
+    let selectedPrompt: string;
+    
+    if (availablePrompts.length === 0) {
+      setUsedPrompts([]);
+      selectedPrompt = STORY_PROMPTS[Math.floor(Math.random() * STORY_PROMPTS.length)];
+    } else {
+      selectedPrompt = availablePrompts[Math.floor(Math.random() * availablePrompts.length)];
+      setUsedPrompts(prev => [...prev, selectedPrompt]);
+    }
+    
+    setCurrentPrompt(selectedPrompt);
+    generateNewChallenge();
+  };
+
   const generateNewChallenge = () => {
     const randomEmojiSet = EMOJI_SETS[Math.floor(Math.random() * EMOJI_SETS.length)];
-    const randomPrompt = STORY_PROMPTS[Math.floor(Math.random() * STORY_PROMPTS.length)];
     
     setCurrentEmojis(randomEmojiSet);
-    setCurrentPrompt(randomPrompt);
     setTimeLeft(120);
     setIsTimerActive(true);
     setPlayerStory('');
     setOpponentStory('');
-    setGamePhase('writing');
+    setGamePhase('creating');
     setIsProcessingRound(false);
   };
 
@@ -138,7 +207,7 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
     } else {
       setRound(prev => prev + 1);
       setTimeout(() => {
-        generateNewChallenge();
+        generateNewPrompt();
       }, 3000);
     }
   };
@@ -231,7 +300,7 @@ export default function EmojiStoryGame({ onGameComplete, onBack }: EmojiStoryGam
               </View>
 
               <View style={styles.gameArea}>
-                {gamePhase === 'writing' && (
+                {gamePhase === 'creating' && (
                   <View style={styles.writingContainer}>
                     <View style={styles.promptContainer}>
                       <Text style={styles.promptTitle}>Story Prompt:</Text>

@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ArrowLeft, ArrowRight, Trophy } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    Animated,
+    Dimensions,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Target, Trophy, ArrowLeft, ArrowRight } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -103,43 +103,178 @@ const QUESTIONS: Question[] = [
 interface WouldYouRatherGameProps {
   onGameComplete: (winner: 'player' | 'opponent') => void;
   onBack: () => void;
+  initialState?: {
+    currentPlayer: 'player' | 'opponent';
+    currentQuestion: Question | null;
+    playerScore: number;
+    opponentScore: number;
+    round: number;
+    gamePhase: 'question' | 'answering' | 'viewing' | 'waiting' | 'completed';
+    usedQuestions: string[];
+    playerAnswer: 'A' | 'B' | null;
+    opponentAnswer: 'A' | 'B' | null;
+  };
+  onStateUpdate?: (state: any) => void;
 }
 
-export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouRatherGameProps) {
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [playerScore, setPlayerScore] = useState(0);
-  const [opponentScore, setOpponentScore] = useState(0);
-  const [round, setRound] = useState(1);
-  const [gamePhase, setGamePhase] = useState<'question' | 'waiting' | 'results' | 'completed'>('question');
-  const [playerChoice, setPlayerChoice] = useState<'A' | 'B' | null>(null);
-  const [opponentChoice, setOpponentChoice] = useState<'A' | 'B' | null>(null);
-  const [usedQuestions, setUsedQuestions] = useState<string[]>([]);
+export default function WouldYouRatherGame({ 
+  onGameComplete, 
+  onBack,
+  initialState,
+  onStateUpdate 
+}: WouldYouRatherGameProps) {
+  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>(
+    initialState?.currentPlayer || 'player'
+  );
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(initialState?.currentQuestion || null);
+  const [playerScore, setPlayerScore] = useState(initialState?.playerScore || 0);
+  const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
+  const [round, setRound] = useState(initialState?.round || 1);
+  const [gamePhase, setGamePhase] = useState<'question' | 'answering' | 'viewing' | 'waiting' | 'completed'>(
+    initialState?.gamePhase || 'question'
+  );
+  const [playerAnswer, setPlayerAnswer] = useState<'A' | 'B' | null>(initialState?.playerAnswer || null);
+  const [opponentAnswer, setOpponentAnswer] = useState<'A' | 'B' | null>(initialState?.opponentAnswer || null);
+  const [usedQuestions, setUsedQuestions] = useState<string[]>(initialState?.usedQuestions || []);
   const [isProcessingRound, setIsProcessingRound] = useState(false);
-  const fadeAnim = new Animated.Value(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const maxRounds = 8;
 
+  // Initialize game
   useEffect(() => {
-    generateNewQuestion();
-  }, []);
-
-  useEffect(() => {
-    if (playerChoice && opponentChoice && !isProcessingRound) {
-      setIsProcessingRound(true);
-      setGamePhase('results');
-      setTimeout(() => {
-        processRound();
-      }, 3000);
+    if (!initialState) {
+      generateNewQuestion();
     }
-  }, [playerChoice, opponentChoice, isProcessingRound]);
-
-  useEffect(() => {
+    // Start fade animation
     Animated.timing(fadeAnim, {
       toValue: 1,
       duration: 500,
       useNativeDriver: true,
     }).start();
-  }, [currentQuestion]);
+  }, []);
+
+  // Update parent component with current state when it changes
+  useEffect(() => {
+    if (onStateUpdate) {
+      onStateUpdate({
+        currentPlayer,
+        currentQuestion,
+        playerScore,
+        opponentScore,
+        round,
+        gamePhase,
+        usedQuestions,
+        playerAnswer,
+        opponentAnswer
+      });
+    }
+  }, [
+    currentPlayer,
+    currentQuestion,
+    playerScore,
+    opponentScore,
+    round,
+    gamePhase,
+    usedQuestions,
+    playerAnswer,
+    opponentAnswer
+  ]);
+
+  // Handle round completion
+  useEffect(() => {
+    let processTimeout: ReturnType<typeof setTimeout>;
+    
+    if (playerAnswer && opponentAnswer && !isProcessingRound) {
+      setIsProcessingRound(true);
+      setGamePhase('viewing');
+      
+      processTimeout = setTimeout(() => {
+        processRound();
+      }, 3000);
+    }
+
+    return () => {
+      if (processTimeout) clearTimeout(processTimeout);
+    };
+  }, [playerAnswer, opponentAnswer, isProcessingRound]);
+
+  // Handle opponent's turn
+  useEffect(() => {
+    let turnTimeout: ReturnType<typeof setTimeout>;
+    
+    const handleOpponentTurn = () => {
+      if (currentPlayer === 'opponent' && gamePhase === 'question' && !isProcessingRound) {
+        setGamePhase('waiting');
+        
+        turnTimeout = setTimeout(() => {
+          // Simulate opponent making a choice
+          const randomChoice = Math.random() < 0.5 ? 'A' : 'B';
+          setOpponentAnswer(randomChoice);
+        }, 1500);
+      }
+    };
+
+    handleOpponentTurn();
+
+    return () => {
+      if (turnTimeout) clearTimeout(turnTimeout);
+    };
+  }, [currentPlayer, gamePhase, isProcessingRound]);
+
+  const handlePlayerChoice = (choice: 'A' | 'B') => {
+    if (isProcessingRound) return;
+    Keyboard.dismiss();
+    
+    setPlayerAnswer(choice);
+    setGamePhase('waiting');
+  };
+
+  const processRound = () => {
+    if (round >= maxRounds) {
+      // Game is complete, determine winner
+      const winner = playerScore > opponentScore ? 'player' : 'opponent';
+      setGamePhase('completed');
+      onGameComplete(winner);
+      return;
+    }
+
+    // Award points for matching choices (shows compatibility)
+    if (playerAnswer === opponentAnswer) {
+      setPlayerScore(prev => prev + 2);
+      setOpponentScore(prev => prev + 2);
+    } else {
+      // Award 1 point each for different choices (shows interesting contrast)
+      setPlayerScore(prev => prev + 1);
+      setOpponentScore(prev => prev + 1);
+    }
+
+    // Switch to next player
+    const nextPlayer = currentPlayer === 'player' ? 'opponent' : 'player';
+    
+    // Increment round when completing a full turn (both players have played)
+    if (currentPlayer === 'opponent') {
+      setRound(prev => prev + 1);
+    }
+
+    // Reset state for next turn
+    setCurrentPlayer(nextPlayer);
+    setGamePhase('question');
+    setIsProcessingRound(false);
+    setPlayerAnswer(null);
+    setOpponentAnswer(null);
+    
+    // Generate new question
+    generateNewQuestion();
+
+    // Animate question transition
+    fadeAnim.setValue(0);
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true
+    }).start();
+  };
 
   const generateNewQuestion = () => {
     const availableQuestions = QUESTIONS.filter(q => !usedQuestions.includes(q.id));
@@ -152,48 +287,6 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
       setUsedQuestions(prev => [...prev, randomQuestion.id]);
     }
     fadeAnim.setValue(0);
-  };
-
-  const handlePlayerChoice = (choice: 'A' | 'B') => {
-    if (isProcessingRound) return;
-    Keyboard.dismiss();
-    
-    setPlayerChoice(choice);
-    setGamePhase('waiting');
-    
-    // Simulate opponent choice
-    setTimeout(() => {
-      const opponentChoice = Math.random() > 0.5 ? 'A' : 'B';
-      setOpponentChoice(opponentChoice);
-    }, 2000);
-  };
-
-  const processRound = () => {
-    // Award points for matching choices (shows compatibility)
-    if (playerChoice === opponentChoice) {
-      setPlayerScore(prev => prev + 2);
-      setOpponentScore(prev => prev + 2);
-    } else {
-      // Award 1 point each for different choices (shows interesting contrast)
-      setPlayerScore(prev => prev + 1);
-      setOpponentScore(prev => prev + 1);
-    }
-
-    // Check for game end
-    if (round >= maxRounds) {
-      setGamePhase('completed');
-      // In this game, it's more about compatibility than winning
-      const winner = Math.random() > 0.5 ? 'player' : 'opponent';
-      setTimeout(() => onGameComplete(winner), 2000);
-    } else {
-      // Next round
-      setRound(prev => prev + 1);
-      setPlayerChoice(null);
-      setOpponentChoice(null);
-      setGamePhase('question');
-      setIsProcessingRound(false);
-      generateNewQuestion();
-    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -280,7 +373,7 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
 
                 <Text style={styles.questionTitle}>Would You Rather...</Text>
 
-                {gamePhase === 'question' && !playerChoice && !isProcessingRound && (
+                {gamePhase === 'question' && !playerAnswer && !isProcessingRound && (
                   <View style={styles.optionsContainer}>
                     <TouchableOpacity
                       style={styles.optionButton}
@@ -321,26 +414,26 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
                 {gamePhase === 'waiting' && (
                   <View style={styles.waitingContainer}>
                     <Text style={styles.waitingTitle}>Luna is choosing...</Text>
-                    {playerChoice && (
+                    {playerAnswer && (
                       <View style={styles.yourChoiceContainer}>
                         <Text style={styles.yourChoiceLabel}>You chose:</Text>
                         <Text style={styles.yourChoiceText}>
-                          {playerChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
+                          {playerAnswer === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
                         </Text>
                       </View>
                     )}
                   </View>
                 )}
 
-                {gamePhase === 'results' && playerChoice && opponentChoice && (
+                {gamePhase === 'viewing' && playerAnswer && opponentAnswer && (
                   <View style={styles.resultsContainer}>
                     <View style={styles.resultItem}>
                       <Text style={styles.resultLabel}>You chose:</Text>
                       <View style={[styles.resultChoice, { 
-                        backgroundColor: playerChoice === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
+                        backgroundColor: playerAnswer === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
                       }]}>
                         <Text style={styles.resultText}>
-                          {playerChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
+                          {playerAnswer === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
                         </Text>
                       </View>
                     </View>
@@ -348,16 +441,16 @@ export default function WouldYouRatherGame({ onGameComplete, onBack }: WouldYouR
                     <View style={styles.resultItem}>
                       <Text style={styles.resultLabel}>Luna chose:</Text>
                       <View style={[styles.resultChoice, { 
-                        backgroundColor: opponentChoice === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
+                        backgroundColor: opponentAnswer === 'A' ? 'rgba(0, 245, 255, 0.2)' : 'rgba(255, 215, 0, 0.2)' 
                       }]}>
                         <Text style={styles.resultText}>
-                          {opponentChoice === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
+                          {opponentAnswer === 'A' ? currentQuestion.optionA : currentQuestion.optionB}
                         </Text>
                       </View>
                     </View>
 
                     <View style={styles.matchIndicator}>
-                      {playerChoice === opponentChoice ? (
+                      {playerAnswer === opponentAnswer ? (
                         <Text style={styles.matchText}>🎯 Perfect Match! +2 points each</Text>
                       ) : (
                         <Text style={styles.differentText}>✨ Interesting contrast! +1 point each</Text>

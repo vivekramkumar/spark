@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Clock, Eye, Send, Trophy } from 'lucide-react-native';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
   Animated,
-  TextInput,
+  Dimensions,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   TouchableWithoutFeedback,
-  Keyboard,
-  Dimensions,
+  View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Eye, Trophy, Clock, Send } from 'lucide-react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -46,101 +46,218 @@ const TRUTH_QUESTIONS: Question[] = [
 interface TruthGameProps {
   onGameComplete: (winner: 'player' | 'opponent') => void;
   onBack: () => void;
+  initialState?: {
+    currentPlayer: 'player' | 'opponent';
+    currentQuestion: Question | null;
+    playerScore: number;
+    opponentScore: number;
+    round: number;
+    gamePhase: 'question' | 'answering' | 'viewing' | 'waiting' | 'completed';
+    usedQuestions: string[];
+    playerAnswer: string;
+    opponentAnswer: string;
+  };
+  onStateUpdate?: (state: any) => void;
 }
 
-export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGameProps) {
-  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>('player');
-  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
-  const [playerScore, setPlayerScore] = useState(0);
-  const [opponentScore, setOpponentScore] = useState(0);
-  const [round, setRound] = useState(1);
-  const [gamePhase, setGamePhase] = useState<'question' | 'answering' | 'viewing' | 'waiting' | 'completed'>('question');
+export default function TruthOrDareGame({ 
+  onGameComplete, 
+  onBack,
+  initialState,
+  onStateUpdate 
+}: TruthGameProps) {
+  // Game state
+  const [currentPlayer, setCurrentPlayer] = useState<'player' | 'opponent'>(
+    initialState?.currentPlayer || 'player'
+  );
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(
+    initialState?.currentQuestion || null
+  );
+  const [playerScore, setPlayerScore] = useState(initialState?.playerScore || 0);
+  const [opponentScore, setOpponentScore] = useState(initialState?.opponentScore || 0);
+  const [round, setRound] = useState(initialState?.round || 1);
+  const [gamePhase, setGamePhase] = useState<'question' | 'answering' | 'viewing' | 'waiting' | 'completed'>(
+    initialState?.gamePhase || 'question'
+  );
   const [timeLeft, setTimeLeft] = useState(60);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [isProcessingTurn, setIsProcessingTurn] = useState(false);
-  const [playerAnswer, setPlayerAnswer] = useState('');
-  const [opponentAnswer, setOpponentAnswer] = useState('');
-  const [usedQuestions, setUsedQuestions] = useState<string[]>([]);
-  const fadeAnim = new Animated.Value(0);
+  const [playerAnswer, setPlayerAnswer] = useState(initialState?.playerAnswer || '');
+  const [opponentAnswer, setOpponentAnswer] = useState(initialState?.opponentAnswer || '');
+  const [usedQuestions, setUsedQuestions] = useState<string[]>(initialState?.usedQuestions || []);
+  
+  // Animation ref
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const timerRef = useRef<ReturnType<typeof setInterval>>();
 
   const maxRounds = 6;
 
+  // Initialize game state
   useEffect(() => {
-    generateNewQuestion();
+    const initGame = async () => {
+      try {
+        if (!currentQuestion && gamePhase === 'question') {
+          await generateNewQuestion();
+        }
+        // Start fade animation
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
+      } catch (error) {
+        console.error('Error initializing game:', error);
+      }
+    };
+
+    initGame();
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
   }, []);
 
+  // Timer effect
   useEffect(() => {
-    let interval: NodeJS.Timeout;
     if (isTimerActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(time => time - 1);
+      timerRef.current = setInterval(() => {
+        setTimeLeft(time => {
+          if (time <= 1) {
+            setIsTimerActive(false);
+            if (timerRef.current) clearInterval(timerRef.current);
+            // Schedule handleSkip for next tick to avoid state update during render
+            setTimeout(() => {
+              setPlayerAnswer("Time's up! Moving on...");
+              setIsTimerActive(false);
+              setGamePhase('viewing');
+              setTimeout(() => nextTurn(), 5000);
+            }, 0);
+            return 0;
+          }
+          return time - 1;
+        });
       }, 1000);
-    } else if (timeLeft === 0 && gamePhase === 'answering') {
-      handleSubmitAnswer();
     }
-    return () => clearInterval(interval);
-  }, [isTimerActive, timeLeft, gamePhase]);
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [isTimerActive]);
 
+  // Handle opponent's turn
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-  }, [currentQuestion]);
+    let turnTimeout: ReturnType<typeof setTimeout>;
+    let viewTimeout: ReturnType<typeof setTimeout>;
 
-  // Handle opponent's turn automatically
-  useEffect(() => {
-    if (currentPlayer === 'opponent' && gamePhase === 'question' && !isProcessingTurn) {
-      setIsProcessingTurn(true);
-      setGamePhase('waiting');
-      
-      // Simulate opponent answering
-      setTimeout(() => {
-        const opponentAnswers = [
-          "I once accidentally called my date by my ex's name... twice! 😅",
-          "I'm a sucker for someone who can make me laugh until my stomach hurts.",
-          "I may have stalked someone's Instagram for 3 hours straight once...",
-          "Definitely during a thunderstorm on a rooftop. So cliché but so romantic!",
-          "I used to think babies came from the grocery store until I was 8.",
-          "They surprised me with a picnic under the stars with all my favorite foods.",
-          "Yes! I sent a heart emoji to my boss instead of my crush. So awkward!",
-          "Someone who doesn't respect boundaries or can't communicate honestly.",
-          "I booked a flight to another country with just 2 hours notice!",
-          "Being vulnerable and having it used against me later.",
-          "Are you a parking ticket? Because you've got FINE written all over you. Ugh!",
-          "I still sleep with a stuffed animal sometimes when I'm stressed.",
-          "Probably this one! I love the gaming aspect and meeting people with similar interests.",
-          "I learned their favorite song and played it outside their window. It worked!",
-          "I worry that I'm not interesting enough to keep someone's attention long-term."
-        ];
+    const handleOpponentTurn = async () => {
+      if (currentPlayer === 'opponent' && gamePhase === 'question' && !isProcessingTurn) {
+        setIsProcessingTurn(true);
+        setGamePhase('waiting');
         
-        const randomAnswer = opponentAnswers[Math.floor(Math.random() * opponentAnswers.length)];
-        setOpponentAnswer(randomAnswer);
-        setGamePhase('viewing');
-        
-        // Show opponent's answer for 5 seconds
-        setTimeout(() => {
-          nextTurn();
-        }, 5000);
-      }, 2000);
-    }
+        // Simulate opponent answering
+        turnTimeout = setTimeout(() => {
+          const opponentAnswers = [
+            "I once accidentally called my date by my ex's name... twice! 😅",
+            "I'm a sucker for someone who can make me laugh until my stomach hurts.",
+            "I may have stalked someone's Instagram for 3 hours straight once...",
+            "Definitely during a thunderstorm on a rooftop. So cliché but so romantic!",
+            "I used to think babies came from the grocery store until I was 8.",
+            "They surprised me with a picnic under the stars with all my favorite foods.",
+            "Yes! I sent a heart emoji to my boss instead of my crush. So awkward!",
+            "Someone who doesn't respect boundaries or can't communicate honestly.",
+            "I booked a flight to another country with just 2 hours notice!",
+            "Being vulnerable and having it used against me later.",
+            "Are you a parking ticket? Because you've got FINE written all over you. Ugh!",
+            "I still sleep with a stuffed animal sometimes when I'm stressed.",
+            "Probably this one! I love the gaming aspect and meeting people with similar interests.",
+            "I learned their favorite song and played it outside their window. It worked!",
+            "I worry that I'm not interesting enough to keep someone's attention long-term."
+          ];
+          
+          const randomAnswer = opponentAnswers[Math.floor(Math.random() * opponentAnswers.length)];
+          setOpponentAnswer(randomAnswer);
+          setGamePhase('viewing');
+          
+          // Show opponent's answer for 5 seconds
+          viewTimeout = setTimeout(() => {
+            nextTurn();
+          }, 5000);
+        }, 2000);
+      }
+    };
+
+    handleOpponentTurn();
+
+    return () => {
+      if (turnTimeout) clearTimeout(turnTimeout);
+      if (viewTimeout) clearTimeout(viewTimeout);
+    };
   }, [currentPlayer, gamePhase, isProcessingTurn]);
 
-  const generateNewQuestion = () => {
-    const availableQuestions = TRUTH_QUESTIONS.filter(q => !usedQuestions.includes(q.id));
-    if (availableQuestions.length === 0) {
-      setUsedQuestions([]);
-      setCurrentQuestion(TRUTH_QUESTIONS[Math.floor(Math.random() * TRUTH_QUESTIONS.length)]);
-    } else {
-      const randomQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
-      setCurrentQuestion(randomQuestion);
-      setUsedQuestions(prev => [...prev, randomQuestion.id]);
+  // Update parent component with current state when it changes
+  useEffect(() => {
+    if (onStateUpdate) {
+      onStateUpdate({
+        currentPlayer,
+        currentQuestion,
+        playerScore,
+        opponentScore,
+        round,
+        gamePhase,
+        usedQuestions,
+        playerAnswer,
+        opponentAnswer
+      });
     }
-    fadeAnim.setValue(0);
+  }, [
+    currentPlayer,
+    currentQuestion,
+    playerScore,
+    opponentScore,
+    round,
+    gamePhase,
+    usedQuestions,
+    playerAnswer,
+    opponentAnswer
+  ]);
+
+  const generateNewQuestion = async () => {
+    try {
+      const availableQuestions = TRUTH_QUESTIONS.filter(q => !usedQuestions.includes(q.id));
+      let newQuestion: Question;
+      
+      if (availableQuestions.length === 0) {
+        // Reset used questions if we've used them all
+        setUsedQuestions([]);
+        newQuestion = TRUTH_QUESTIONS[Math.floor(Math.random() * TRUTH_QUESTIONS.length)];
+        setUsedQuestions([newQuestion.id]);
+      } else {
+        newQuestion = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+        setUsedQuestions(prev => [...prev, newQuestion.id]);
+      }
+      
+      setCurrentQuestion(newQuestion);
+      
+      // Reset game state for new question
+      setPlayerAnswer('');
+      setOpponentAnswer('');
+      setTimeLeft(60);
+      setIsTimerActive(false);
+      setIsProcessingTurn(false);
+    } catch (error) {
+      console.error('Error generating new question:', error);
+    }
   };
 
   const handleStartAnswering = () => {
+    if (!currentQuestion) {
+      generateNewQuestion();
+      return;
+    }
+    
     setGamePhase('answering');
     setTimeLeft(60);
     setIsTimerActive(true);
@@ -174,28 +291,31 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
   };
 
   const nextTurn = () => {
-    setIsProcessingTurn(false);
-    
     if (round >= maxRounds) {
+      // Game is complete, determine winner
+      const winner = playerScore > opponentScore ? 'player' : 'opponent';
       setGamePhase('completed');
-      const winner = playerScore >= opponentScore ? 'player' : 'opponent';
-      setTimeout(() => onGameComplete(winner), 2000);
-    } else {
-      // Switch players
-      const nextPlayer = currentPlayer === 'player' ? 'opponent' : 'player';
-      setCurrentPlayer(nextPlayer);
-      
-      // Increment round only after both players have played
-      if (currentPlayer === 'opponent') {
-        setRound(prev => prev + 1);
-      }
-      
-      setGamePhase('question');
-      setCurrentQuestion(null);
-      setPlayerAnswer('');
-      setOpponentAnswer('');
-      generateNewQuestion();
+      onGameComplete(winner);
+      return;
     }
+
+    // Switch to next player
+    const nextPlayer = currentPlayer === 'player' ? 'opponent' : 'player';
+    
+    // Increment round when completing a full turn (both players have played)
+    if (currentPlayer === 'opponent') {
+      setRound(prev => prev + 1);
+    }
+
+    // Reset state for next turn
+    setCurrentPlayer(nextPlayer);
+    setGamePhase('question');
+    setIsProcessingTurn(false);
+    setPlayerAnswer('');
+    setOpponentAnswer('');
+    
+    // Generate new question for next turn
+    generateNewQuestion();
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -258,150 +378,157 @@ export default function TruthOrDareGame({ onGameComplete, onBack }: TruthGamePro
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               keyboardVerticalOffset={0}
             >
-              <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={onBack}>
-                  <Text style={styles.backButtonText}>← Back</Text>
-                </TouchableOpacity>
-                <Text style={styles.gameTitle}>Truth Session</Text>
-                <View style={styles.roundInfo}>
-                  <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
+              <ScrollView 
+                style={styles.mainScroll}
+                contentContainerStyle={styles.mainScrollContent}
+                bounces={false}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.header}>
+                  <TouchableOpacity style={styles.backButton} onPress={onBack}>
+                    <Text style={styles.backButtonText}>← Back</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.gameTitle}>Truth Session</Text>
+                  <View style={styles.roundInfo}>
+                    <Text style={styles.roundText}>Round {round}/{maxRounds}</Text>
+                  </View>
                 </View>
-              </View>
 
-              <View style={styles.scoreBoard}>
-                <View style={styles.scoreItem}>
-                  <Text style={styles.scoreLabel}>You</Text>
-                  <Text style={styles.scoreValue}>{playerScore}</Text>
+                <View style={styles.scoreBoard}>
+                  <View style={styles.scoreItem}>
+                    <Text style={styles.scoreLabel}>You</Text>
+                    <Text style={styles.scoreValue}>{playerScore}</Text>
+                  </View>
+                  <View style={styles.scoreItem}>
+                    <Text style={styles.scoreLabel}>Luna</Text>
+                    <Text style={styles.scoreValue}>{opponentScore}</Text>
+                  </View>
                 </View>
-                <View style={styles.scoreItem}>
-                  <Text style={styles.scoreLabel}>Luna</Text>
-                  <Text style={styles.scoreValue}>{opponentScore}</Text>
+
+                <View style={styles.currentPlayerIndicator}>
+                  <Text style={styles.currentPlayerText}>
+                    {currentPlayer === 'player' ? "Your Turn!" : "Luna's Turn"}
+                  </Text>
                 </View>
-              </View>
 
-              <View style={styles.currentPlayerIndicator}>
-                <Text style={styles.currentPlayerText}>
-                  {currentPlayer === 'player' ? "Your Turn!" : "Luna's Turn"}
-                </Text>
-              </View>
+                <View style={styles.gameArea}>
+                  {currentQuestion && gamePhase === 'question' && currentPlayer === 'player' && (
+                    <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
+                      <View style={styles.questionTypeIndicator}>
+                        <Eye size={24} color="#FFFFFF" />
+                        <Text style={styles.questionTypeText}>TRUTH</Text>
+                      </View>
 
-              <View style={styles.gameArea}>
-                {gamePhase === 'question' && currentPlayer === 'player' && currentQuestion && (
-                  <Animated.View style={[styles.questionContainer, { opacity: fadeAnim }]}>
-                    <View style={styles.questionTypeIndicator}>
-                      <Eye size={24} color="#FFFFFF" />
-                      <Text style={styles.questionTypeText}>TRUTH</Text>
-                    </View>
+                      <View style={[styles.difficultyBadge, { 
+                        backgroundColor: getDifficultyColor(currentQuestion.difficulty) 
+                      }]}>
+                        <Text style={styles.difficultyText}>
+                          {currentQuestion.difficulty.toUpperCase()}
+                        </Text>
+                      </View>
 
-                    <View style={[styles.difficultyBadge, { 
-                      backgroundColor: getDifficultyColor(currentQuestion.difficulty) 
-                    }]}>
-                      <Text style={styles.difficultyText}>
-                        {currentQuestion.difficulty.toUpperCase()}
-                      </Text>
-                    </View>
+                      <ScrollView style={styles.questionScroll}>
+                        <Text style={styles.questionText}>{currentQuestion.text}</Text>
+                      </ScrollView>
 
-                    <ScrollView style={styles.questionScroll}>
-                      <Text style={styles.questionText}>{currentQuestion.text}</Text>
-                    </ScrollView>
-
-                    <TouchableOpacity
-                      style={styles.startAnswerButton}
-                      onPress={handleStartAnswering}
-                    >
-                      <LinearGradient
-                        colors={['#9D4EDD', '#C77DFF']}
-                        style={styles.startAnswerButtonGradient}
-                      >
-                        <Text style={styles.startAnswerButtonText}>Start Answering</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  </Animated.View>
-                )}
-
-                {gamePhase === 'answering' && currentPlayer === 'player' && (
-                  <View style={styles.answeringContainer}>
-                    <View style={styles.timerContainer}>
-                      <Clock size={20} color="#FFD700" />
-                      <Text style={styles.timerText}>{timeLeft}s</Text>
-                    </View>
-
-                    <Text style={styles.answeringTitle}>Your turn to share!</Text>
-                    <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
-
-                    <TextInput
-                      style={styles.answerInput}
-                      value={playerAnswer}
-                      onChangeText={setPlayerAnswer}
-                      placeholder="Type your honest answer here..."
-                      placeholderTextColor="rgba(156, 163, 175, 0.7)"
-                      multiline
-                      maxLength={500}
-                      returnKeyType="done"
-                      onSubmitEditing={dismissKeyboard}
-                    />
-
-                    <Text style={styles.characterCount}>{playerAnswer.length}/500</Text>
-
-                    <View style={styles.answerActions}>
                       <TouchableOpacity
-                        style={styles.submitButton}
-                        onPress={handleSubmitAnswer}
-                        disabled={!playerAnswer.trim()}
+                        style={styles.startAnswerButton}
+                        onPress={handleStartAnswering}
                       >
                         <LinearGradient
-                          colors={playerAnswer.trim() ? ['#06FFA5', '#00D4AA'] : ['#374151', '#4B5563']}
-                          style={styles.submitButtonGradient}
+                          colors={['#9D4EDD', '#C77DFF']}
+                          style={styles.startAnswerButtonGradient}
                         >
-                          <Send size={20} color="#FFFFFF" />
-                          <Text style={styles.submitButtonText}>Submit Answer</Text>
+                          <Text style={styles.startAnswerButtonText}>Start Answering</Text>
                         </LinearGradient>
                       </TouchableOpacity>
+                    </Animated.View>
+                  )}
 
-                      <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-                        <Text style={styles.skipButtonText}>Skip Question</Text>
-                      </TouchableOpacity>
+                  {gamePhase === 'answering' && currentPlayer === 'player' && (
+                    <View style={styles.answeringContainer}>
+                      <View style={styles.timerContainer}>
+                        <Clock size={20} color="#FFD700" />
+                        <Text style={styles.timerText}>{timeLeft}s</Text>
+                      </View>
+
+                      <Text style={styles.answeringTitle}>Your turn to share!</Text>
+                      <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
+
+                      <TextInput
+                        style={styles.answerInput}
+                        value={playerAnswer}
+                        onChangeText={setPlayerAnswer}
+                        placeholder="Type your honest answer here..."
+                        placeholderTextColor="rgba(156, 163, 175, 0.7)"
+                        multiline
+                        maxLength={500}
+                        returnKeyType="done"
+                        onSubmitEditing={dismissKeyboard}
+                      />
+
+                      <Text style={styles.characterCount}>{playerAnswer.length}/500</Text>
+
+                      <View style={styles.answerActions}>
+                        <TouchableOpacity
+                          style={styles.submitButton}
+                          onPress={handleSubmitAnswer}
+                          disabled={!playerAnswer.trim()}
+                        >
+                          <LinearGradient
+                            colors={playerAnswer.trim() ? ['#06FFA5', '#00D4AA'] : ['#374151', '#4B5563']}
+                            style={styles.submitButtonGradient}
+                          >
+                            <Send size={20} color="#FFFFFF" />
+                            <Text style={styles.submitButtonText}>Submit Answer</Text>
+                          </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+                          <Text style={styles.skipButtonText}>Skip Question</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  </View>
-                )}
+                  )}
 
-                {gamePhase === 'viewing' && (
-                  <View style={styles.viewingContainer}>
-                    <Text style={styles.viewingTitle}>
-                      {currentPlayer === 'player' ? 'Your Answer:' : "Luna's Answer:"}
-                    </Text>
-                    
-                    <View style={styles.answerDisplay}>
-                      <LinearGradient
-                        colors={currentPlayer === 'player' 
-                          ? ['rgba(0, 245, 255, 0.1)', 'rgba(0, 128, 255, 0.05)']
-                          : ['rgba(157, 78, 221, 0.1)', 'rgba(199, 125, 255, 0.05)']
+                  {gamePhase === 'viewing' && (
+                    <View style={styles.viewingContainer}>
+                      <Text style={styles.viewingTitle}>
+                        {currentPlayer === 'player' ? 'Your Answer:' : "Luna's Answer:"}
+                      </Text>
+                      
+                      <View style={styles.answerDisplay}>
+                        <LinearGradient
+                          colors={currentPlayer === 'player' 
+                            ? ['rgba(0, 245, 255, 0.1)', 'rgba(0, 128, 255, 0.05)']
+                            : ['rgba(157, 78, 221, 0.1)', 'rgba(199, 125, 255, 0.05)']
+                          }
+                          style={styles.answerDisplayGradient}
+                        >
+                          <Text style={styles.answerText}>
+                            {currentPlayer === 'player' ? playerAnswer : opponentAnswer}
+                          </Text>
+                        </LinearGradient>
+                      </View>
+
+                      <Text style={styles.viewingSubtitle}>
+                        {currentPlayer === 'player' 
+                          ? 'Luna can see your answer for a few seconds...'
+                          : 'Take a moment to read her answer...'
                         }
-                        style={styles.answerDisplayGradient}
-                      >
-                        <Text style={styles.answerText}>
-                          {currentPlayer === 'player' ? playerAnswer : opponentAnswer}
-                        </Text>
-                      </LinearGradient>
+                      </Text>
                     </View>
+                  )}
 
-                    <Text style={styles.viewingSubtitle}>
-                      {currentPlayer === 'player' 
-                        ? 'Luna can see your answer for a few seconds...'
-                        : 'Take a moment to read her answer...'
-                      }
-                    </Text>
-                  </View>
-                )}
-
-                {gamePhase === 'waiting' && currentPlayer === 'opponent' && (
-                  <View style={styles.waitingContainer}>
-                    <Text style={styles.waitingTitle}>Luna is thinking...</Text>
-                    <Text style={styles.waitingSubtitle}>She's crafting her honest answer</Text>
-                    <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
-                  </View>
-                )}
-              </View>
+                  {gamePhase === 'waiting' && currentPlayer === 'opponent' && (
+                    <View style={styles.waitingContainer}>
+                      <Text style={styles.waitingTitle}>Luna is thinking...</Text>
+                      <Text style={styles.waitingSubtitle}>She's crafting her honest answer</Text>
+                      <Text style={styles.questionReminder}>{currentQuestion?.text}</Text>
+                    </View>
+                  )}
+                </View>
+              </ScrollView>
             </KeyboardAvoidingView>
           </SafeAreaView>
         </LinearGradient>
@@ -422,15 +549,19 @@ const styles = StyleSheet.create({
   },
   keyboardView: {
     flex: 1,
+  },
+  mainScroll: {
+    flex: 1,
+  },
+  mainScrollContent: {
+    flexGrow: 1,
     padding: screenWidth * 0.05,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: screenHeight * 0.025,
-    paddingTop: screenHeight * 0.02,
-    minHeight: screenHeight * 0.08,
+    marginBottom: screenHeight * 0.02,
   },
   backButton: {
     padding: 8,
@@ -461,7 +592,11 @@ const styles = StyleSheet.create({
   scoreBoard: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: screenHeight * 0.025,
+    alignItems: 'center',
+    marginBottom: screenHeight * 0.02,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 15,
+    padding: screenWidth * 0.03,
   },
   scoreItem: {
     alignItems: 'center',
@@ -479,7 +614,7 @@ const styles = StyleSheet.create({
   },
   currentPlayerIndicator: {
     alignItems: 'center',
-    marginBottom: screenHeight * 0.025,
+    marginBottom: screenHeight * 0.02,
   },
   currentPlayerText: {
     fontSize: Math.min(screenWidth * 0.045, 18),
@@ -488,14 +623,15 @@ const styles = StyleSheet.create({
   },
   gameArea: {
     flex: 1,
-    justifyContent: 'center',
+    minHeight: screenHeight * 0.5,
+    justifyContent: 'flex-start',
+    alignItems: 'stretch',
   },
   questionContainer: {
-    backgroundColor: 'rgba(31, 31, 58, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 20,
-    padding: screenWidth * 0.06,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: screenWidth * 0.05,
+    minHeight: screenHeight * 0.3,
   },
   questionTypeIndicator: {
     flexDirection: 'row',
@@ -527,8 +663,8 @@ const styles = StyleSheet.create({
     color: '#0F0F23',
   },
   questionScroll: {
-    maxHeight: screenHeight * 0.25,
-    marginBottom: screenHeight * 0.03,
+    maxHeight: screenHeight * 0.2,
+    marginVertical: screenHeight * 0.02,
   },
   questionText: {
     fontSize: Math.min(screenWidth * 0.05, 20),
@@ -551,11 +687,10 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   answeringContainer: {
-    backgroundColor: 'rgba(31, 31, 58, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 20,
-    padding: screenWidth * 0.06,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: screenWidth * 0.05,
+    minHeight: screenHeight * 0.4,
   },
   timerContainer: {
     flexDirection: 'row',
@@ -585,17 +720,15 @@ const styles = StyleSheet.create({
     lineHeight: Math.min(screenWidth * 0.055, 22),
   },
   answerInput: {
-    backgroundColor: 'rgba(31, 31, 58, 0.5)',
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
     padding: screenWidth * 0.04,
-    fontSize: Math.min(screenWidth * 0.04, 16),
-    fontFamily: 'Inter-Regular',
     color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    fontFamily: 'Inter-Regular',
+    fontSize: Math.min(screenWidth * 0.04, 16),
     minHeight: screenHeight * 0.15,
     textAlignVertical: 'top',
-    marginBottom: screenHeight * 0.01,
+    marginVertical: screenHeight * 0.02,
   },
   characterCount: {
     fontSize: Math.min(screenWidth * 0.03, 12),
@@ -634,8 +767,10 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   viewingContainer: {
-    alignItems: 'center',
-    paddingHorizontal: screenWidth * 0.05,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    padding: screenWidth * 0.05,
+    minHeight: screenHeight * 0.3,
   },
   viewingTitle: {
     fontSize: Math.min(screenWidth * 0.05, 20),
@@ -668,8 +803,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   waitingContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 20,
+    padding: screenWidth * 0.05,
+    minHeight: screenHeight * 0.3,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: screenWidth * 0.05,
   },
   waitingTitle: {
     fontSize: Math.min(screenWidth * 0.06, 24),

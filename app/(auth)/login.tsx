@@ -1,26 +1,26 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
-  Dimensions,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
-import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { router } from 'expo-router';
+import { ArrowLeft, Eye, EyeOff, Lock, Mail } from 'lucide-react-native';
+import React, { useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const { colors } = useTheme();
+  const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -48,7 +48,7 @@ export default function LoginScreen() {
   const styles = StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: colors.background,
+      backgroundColor: theme.colors.background.primary,
     },
     safeArea: {
       flex: 1,
@@ -71,11 +71,11 @@ export default function LoginScreen() {
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     content: {
       flex: 1,
@@ -84,13 +84,13 @@ export default function LoginScreen() {
     title: {
       fontSize: Math.min(screenWidth * 0.08, 32),
       fontFamily: 'Inter-Bold',
-      color: colors.text,
+      color: theme.colors.text.primary,
       marginBottom: 8,
     },
     subtitle: {
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Medium',
-      color: colors.textSecondary,
+      color: theme.colors.text.secondary,
       marginBottom: screenHeight * 0.04,
     },
     inputGroup: {
@@ -99,28 +99,28 @@ export default function LoginScreen() {
     inputLabel: {
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Medium',
-      color: colors.text,
+      color: theme.colors.text.primary,
       marginBottom: 8,
     },
     inputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 12,
       paddingHorizontal: screenWidth * 0.04,
       paddingVertical: screenHeight * 0.015,
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     inputContainerFocused: {
-      borderColor: colors.primary,
-      backgroundColor: colors.card,
+      borderColor: theme.colors.button.primary.background[0],
+      backgroundColor: theme.colors.background.card,
     },
     textInput: {
       flex: 1,
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Regular',
-      color: colors.text,
+      color: theme.colors.text.primary,
       marginLeft: screenWidth * 0.03,
     },
     eyeButton: {
@@ -134,21 +134,21 @@ export default function LoginScreen() {
     forgotPasswordText: {
       fontSize: Math.min(screenWidth * 0.035, 14),
       fontFamily: 'Inter-Medium',
-      color: colors.primary,
+      color: theme.colors.button.primary.background[0],
     },
     loginButton: {
-      backgroundColor: colors.primary,
+      backgroundColor: theme.colors.button.primary.background[0],
       borderRadius: 12,
       paddingVertical: screenHeight * 0.02,
       alignItems: 'center',
-      shadowColor: colors.primary,
+      shadowColor: theme.colors.button.primary.background[0],
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.3,
       shadowRadius: 8,
       elevation: 4,
     },
     disabledButton: {
-      backgroundColor: colors.textSecondary,
+      backgroundColor: theme.colors.text.secondary,
       shadowOpacity: 0,
       elevation: 0,
     },
@@ -165,29 +165,29 @@ export default function LoginScreen() {
     dividerLine: {
       flex: 1,
       height: 1,
-      backgroundColor: colors.border,
+      backgroundColor: theme.colors.border.default,
     },
     dividerText: {
       marginHorizontal: screenWidth * 0.04,
       fontSize: Math.min(screenWidth * 0.035, 14),
       fontFamily: 'Inter-Medium',
-      color: colors.textSecondary,
+      color: theme.colors.text.secondary,
     },
     registerLink: {
-      backgroundColor: colors.surface,
+      backgroundColor: theme.colors.background.secondary,
       borderRadius: 12,
       paddingVertical: screenHeight * 0.02,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: colors.border,
+      borderColor: theme.colors.border.default,
     },
     registerLinkText: {
       fontSize: Math.min(screenWidth * 0.04, 16),
       fontFamily: 'Inter-Medium',
-      color: colors.text,
+      color: theme.colors.text.primary,
     },
     registerLinkHighlight: {
-      color: colors.primary,
+      color: theme.colors.button.primary.background[0],
       fontFamily: 'Inter-Bold',
     },
   });
@@ -210,7 +210,7 @@ export default function LoginScreen() {
                 style={styles.backButton}
                 onPress={() => router.back()}
               >
-                <ArrowLeft size={Math.min(screenWidth * 0.06, 24)} color={colors.text} />
+                <ArrowLeft size={Math.min(screenWidth * 0.06, 24)} color={theme.colors.text.primary} />
               </TouchableOpacity>
             </View>
 
@@ -227,13 +227,13 @@ export default function LoginScreen() {
                   styles.inputContainer,
                   focusedField === 'email' && styles.inputContainerFocused
                 ]}>
-                  <Mail size={Math.min(screenWidth * 0.05, 20)} color={colors.textSecondary} />
+                  <Mail size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.secondary} />
                   <TextInput
                     style={styles.textInput}
                     value={email}
                     onChangeText={setEmail}
                     placeholder="Enter your email"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={theme.colors.text.secondary}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -249,13 +249,13 @@ export default function LoginScreen() {
                   styles.inputContainer,
                   focusedField === 'password' && styles.inputContainerFocused
                 ]}>
-                  <Lock size={Math.min(screenWidth * 0.05, 20)} color={colors.textSecondary} />
+                  <Lock size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.secondary} />
                   <TextInput
                     style={styles.textInput}
                     value={password}
                     onChangeText={setPassword}
                     placeholder="Enter your password"
-                    placeholderTextColor={colors.textSecondary}
+                    placeholderTextColor={theme.colors.text.secondary}
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
@@ -267,9 +267,9 @@ export default function LoginScreen() {
                     onPress={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? (
-                      <EyeOff size={Math.min(screenWidth * 0.05, 20)} color={colors.textSecondary} />
+                      <EyeOff size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.secondary} />
                     ) : (
-                      <Eye size={Math.min(screenWidth * 0.05, 20)} color={colors.textSecondary} />
+                      <Eye size={Math.min(screenWidth * 0.05, 20)} color={theme.colors.text.secondary} />
                     )}
                   </TouchableOpacity>
                 </View>

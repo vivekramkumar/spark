@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+do not break any existing functionality, use the most efficient way possible to edit the code. do not create new files unless absolutely necassary.
